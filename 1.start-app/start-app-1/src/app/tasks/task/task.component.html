@@ -1,0 +1,16 @@
+@if (isModifyTask) {
+  <app-modify-task />
+}
+
+<app-card>
+  <article>
+    <h2>{{ task.title }}</h2>
+    <time>{{ task.dueDate | date:'fullDate' }}</time>
+    <p>{{ task.summary }}</p>
+    <p class="actions">
+      <button (click)="onModifyTask()">Edit</button>
+      <span style="display: inline-block;width: 20px;"></span>
+      <button (click)="onCompelateTask()">Complete</button>
+    </p>
+  </article>
+</app-card>

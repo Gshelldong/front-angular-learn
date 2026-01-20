@@ -1,0 +1,22 @@
+@if (isAddingTask) {
+<!-- 3.接收来自子组件的输出，然后触发一个父组件中的函数 -->
+  <app-new-task (cancel)="onCancelAddingTask()" [userId] = userId />
+}
+
+<section id="tasks">
+  <header>
+    <h2>{{ name }}'s Tasks</h2>
+    <menu>
+      <button (click)="onStartAddTask()">Add Task</button>
+    </menu>
+  </header>
+
+  <ul>
+    @for (task of selectUserTasks; track task.id) {
+      <li>
+        <!--    这里获取到输出并从$event中获取到提交过来的id,并交给 onCompelateTask() 函数做处理-->
+        <app-task [task]="task"/>
+      </li>
+    }
+  </ul>
+</section>

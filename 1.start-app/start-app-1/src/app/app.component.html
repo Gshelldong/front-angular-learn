@@ -1,0 +1,19 @@
+<app-header />
+<main>
+  <ul id="users">
+    @for (user of users;track user.id){
+      <li>
+        <app-user [user]="user" [selected]="user.id === this.selectedUserId" (select)="onSelectUser($event)"/>
+      </li>
+    }
+  </ul>
+
+  @if (selectedUser) {
+    <!-- selectedUser的值是否为空，空的就传“”，有值就传用户的名字 -->
+    <app-tasks [userId]="selectedUser.id" [name]="selectedUser ? selectedUser.name : ''" />
+
+  } @else {
+    <p id="fallback">Select a user to see their tasks!</p>
+  }
+</main>
+
