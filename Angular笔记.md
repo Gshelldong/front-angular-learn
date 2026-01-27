@@ -104,6 +104,24 @@ angular.json
 }
 
 ```
+修改`ng g c 组件名`的生成组件行为加上`component`的字符。
+修改`angular.json`
+
+```json
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "investment-caculator": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "type": "component",
+          "skipTests": true
+        }
+      }
+```
 
 ## 属性设置
 
