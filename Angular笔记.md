@@ -630,7 +630,17 @@ export class CardComponent {
     </p>
   </article>
 </app-card>
+
+
+// 包裹其他的组件
+<app-card>
+    <app-home />
+</app-card>
 ```
+
+## 组件扩展器
+
+
 
 ## 管道
 
@@ -1111,3 +1121,24 @@ import {SharedModule} from '../../shared/shared.module';
 export class TasksModule {}
 ```
 
+## 如何debug代码
+
+- 浏览器sources打断点。
+- 代码的运行报错。
+- ide的错误提示。
+- angular的开发工具，浏览器插件。
+
+## 如何分离组件
+
+通常某一功能的实现分为一个组件。比如headr头部分为一个组件。侧边栏一个组件，中有子组件，danshboard中一个组件中的子组件。
+
+一个分离组件的示例
+
+```html
+```
+
+## 前端组件的重用
+
+- ng-content
+
+- 组件扩展
