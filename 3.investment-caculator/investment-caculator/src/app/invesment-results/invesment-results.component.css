@@ -1,0 +1,22 @@
+table {
+  max-width: 50rem;
+  margin: 2rem auto;
+  table-layout: fixed;
+  text-align: right;
+}
+
+table tbody {
+  font-family: "Roboto Condensed", sans-serif;
+  font-size: 0.9rem;
+  color: #c2e9e0;
+}
+
+table tbody td {
+  border: 1px solid #ccc; /* 每个单元格的框线（关键！） */
+  padding: 8px 12px; /* 内边距，避免文字贴边框 */
+}
+
+table thead th {
+  border: 1px solid #ccc; /* 每个单元格的框线（关键！） */
+  padding: 8px 12px; /* 内边距，避免文字贴边框 */
+}
