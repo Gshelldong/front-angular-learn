@@ -105,6 +105,16 @@ angular.json
 
 ```
 
+### public目录
+
+在public目录中的静态资源可以直接通过相对路径的方式使用文件名字进行访问。
+
+```html
+<img src='image.png'alt='a moneny bag  '>
+```
+
+
+
 ## 属性设置
 
 ts中声明函数，和属性设置。
@@ -863,6 +873,21 @@ export class TaskComponent {
 ```
 
 从上面两种不同的引用服务的方式可以得出结论，用户数据交互独立成服务之后在不同的组件中就可直接调用服务来进行数据处理，与输入输出处理数据的方式相比，处理数据更加高效，代码更加简洁。
+
+## 表单
+
+```ts
+import { FormsModule } from '@angular/forms';
+```
+
+在html中的使用
+
+```html
+<form (ngSubmit)="onSubmit()">
+</form>
+```
+
+
 
 ## 老项目模块启动
 
