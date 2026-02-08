@@ -1134,11 +1134,235 @@ export class TasksModule {}
 
 一个分离组件的示例
 
-```html
+![](images\ScreenShot_2026-02-08_173733_533.png)
+
+我们把这个界面拆成了几个板块
+
+- header 头部
+
+- dashboard 界面部分
+
+  界面部分继续才分成:
+
+  - server status
+  - taeffik
+  - tickets
+
+项目代码示例:
+
+![](images\ScreenShot_2026-02-08_174142_172.png)
+
+代码中通过标签把每个子组件汇聚在一起。
+
+```ts
+# app.component.html
+<app-header />
+
+<main>
+  <div id="dashboard">
+    <div class="dashboard-item">
+      <app-server-status />
+    </div>
+
+    <div class="dashboard-item">
+      <app-traffic />
+    </div>
+
+    <div class="dashboard-item">
+      <app-tickets />
+    </div>
+  </div>
+</main>
+
+// app.component.ts
+import { Component } from '@angular/core';
+import {HeaderComponent} from "./header/header.component";
+import {ServerStatusComponent} from "./dashboard/server-status/server-status.component";
+import {TrafficComponent} from "./dashboard/traffic/traffic.component";
+import {TicketsComponent} from "./dashboard/tickets/tickets.component";
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  templateUrl: './app.component.html',
+  imports: [
+    HeaderComponent,
+    ServerStatusComponent,
+    TrafficComponent,
+    TicketsComponent
+  ]
+})
+export class AppComponent {
+
+}
 ```
+
+
 
 ## 前端组件的重用
 
 - ng-content
 
-- 组件扩展
+- 组件复用
+
+![](D:\前端\项目\images\ScreenShot_2026-02-08_175154_952.png)
+
+在这里每个卡片的标题部分都是重复的代码，为了让代码更加的简洁，可以把标题部分做成一个公共的组件，然后把内容部分进行填充。
+
+```html
+// dashboard-item.component.html
+
+<div class="dashboard-item">
+  <article>
+    <header>
+      <img [src]="image().src" [alt]="image().alt" />
+      <h2>{{ title() }}</h2>
+    </header>
+    <ng-content />
+  </article>
+</div>
+
+// ts实现 dashboard-item.component.ts
+import {Component, Input, input} from '@angular/core';
+
+@Component({
+  selector: 'app-dashboard-item',
+  standalone: true,
+  imports: [],
+  templateUrl: './dashboard-item.component.html',
+  styleUrl: './dashboard-item.component.css'
+})
+
+export class DashboardItemComponent {
+  @Input({required: true}) image!: {src: string;alt: string};
+  @Input({required: true}) title!: string;
+
+  // 要求输入两个参数
+  
+  // image = input.required<{src:string;alt:string}>();
+  // title = input.required<string>();
+}
+
+```
+
+```html
+// app.component.html 调用的时候
+
+<app-header />
+
+<main>
+  <div id="dashboard">
+    <app-dashboard-item
+      [image]="{ src: 'status.png', alt: 'A signal symbol' }"
+      title="Server Status"
+    >
+      <app-server-status />
+    </app-dashboard-item>
+
+    <app-dashboard-item
+      [image]="{ src: 'globe.png', alt: 'A globe' }"
+      title="Traffic"
+    >
+      <app-traffic />
+    </app-dashboard-item>
+
+    <app-dashboard-item
+      [image]="{ src: 'list.png', alt: 'A list of items' }"
+      title="Support Tickets"
+    >
+      <app-tickets />
+    </app-dashboard-item>
+  </div>
+</main>
+      
+```
+
+在这里我们把server-status、tareffik和tickets的标题部分和内容部分进行了提取和组合。公共部分的标题使用参数传入，这样在哪里调用就直接传入不同的参数，以达到不同的显示效果。
+
+## 标签的的扩展属性
+
+对button标签的扩展，如果一个button直接使用最原始的select这样在标签中会有多的嵌套层的出现，可以使用标签的扩展直接修改原标签。
+
+官方参考链接: https://angular.cn/guide/components/selectors#
+
+button：限定组件只能绑定到 <button> 标签上（不是<div>、<a>等其他标签）；
+[appButton]：要求该<button>标签必须带有 appButton 属性（属性值可省略，仅需存在该属性）。
+
+```ts
+// button.component.html
+<span>Logout</span>
+<span class="icon">→</span>
+
+
+// button.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'button[appButton]',
+  standalone: true,
+  imports: [],
+  templateUrl: './button.component.html',
+  styleUrl: './button.component.css'
+})
+export class ButtonComponent {
+
+}
+
+// 在目标文件使用的时候
+<header>
+  <div id="logo">
+    <img src="logo.png" alt="Website logo, a server" />
+  </div>
+
+  <nav>
+    <ul>
+      <li>
+        <a href="/">Home</a>
+      </li>
+      <li>
+        <a href="/">Management</a>
+      </li>
+      <li>
+        // 直接在这里声明就行了
+        <button appButton></button>
+      </li>
+    </ul>
+  </nav>
+</header>
+```
+
+### 带选择器的ng-content扩展
+
+没有select的时候，匹配**所有未被其他 ng-content 捕获**的内容。
+
+`select="icon"`匹配标签名为 `<icon>` 的元素。
+
+```html
+<span>
+  <ng-content />
+</span>
+<span class="icon">
+  <ng-content select="icon" />
+</span>
+```
+
+使用该组件时的写法：
+
+```html
+<!-- 假设组件选择器是 app-button -->
+<app-button>
+  按钮文字          <!-- 会被第一个 ng-content 捕获 -->
+  <icon>🔍</icon>   <!-- 会被第二个 ng-content 捕获 -->
+</app-button>
+```
+
+或者使用
+
+```html
+<button appButton>
+  Submit
+  <span ngProjectAs="icon">⌲</span> <!-- 别名设为icon，被select="icon"捕获 -->
+</button>
+```
+
+ngProjectAs 指令的本质是：给元素设置 “投影别名”，让 Angular 在内容投影时，把这个元素当作别名对应的选择器来匹配，而非按元素本身的标签 / 类名匹配。
