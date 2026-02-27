@@ -1367,6 +1367,18 @@ export class ButtonComponent {
 
 ngProjectAs 指令的本质是：给元素设置 “投影别名”，让 Angular 在内容投影时，把这个元素当作别名对应的选择器来匹配，而非按元素本身的标签 / 类名匹配。
 
+### ng-content只渲染指定的标签
+
+```html
+<p class="control">
+  <label>Title</label>
+  <!-- 只会渲染input和textarea标签 -->
+  <ng-content select="input, textarea"/>
+</p>
+```
+
+
+
 
 
 - 把表单公共部分的输入标签分离出来。
@@ -1374,20 +1386,174 @@ ngProjectAs 指令的本质是：给元素设置 “投影别名”，让 Angula
 
 
 
-- 
+## CSS样式伪类:host
 
+- 每个组件的css样式文件只会影响该组件。
 
+- 每个组件中的css样式文件只会渲染当前html中存在的标签和选择器，如果有调用之后传入的标签一样不会被渲染，可以通过配置ts实现外部传入的标签的也被渲染。比如ng-content的内容。
 
-## css样式
+- 如果需要影响传入的组件需要在ts中把只影响组件的功能关闭。
 
-每个组件的css样式只会影响该组件。
-
-每个组件中的css样式只会渲染当前html中存在的标签，如果有调用之后传入的标签一样不会被渲染。
-
-如果需要影响传入的组件需要在ts中把只影响组件的功能关闭。
-
-css中添加 :host 可以在宿主元素中找下一级元素。
-
-:host 就是宿主元素
+- 组件css文件中`:host` 表示的书宿主标签。
 
 ## 类绑定
+
+直接在组件的标签中添加类属性。这样可以减少包裹的标签。
+
+![](images/20260227141841.png)
+
+```css
+.control label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 0.15rem;
+  color: #4f4b53;
+}
+
+.control input,
+.control textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #4f4b53;
+}
+
+```
+
+输入框被p标签包裹，class=control有作用，直接在组件中添加class样式去掉p标签，减少重复效果。
+
+```ts
+import {Component, Input, ViewEncapsulation} from '@angular/core';
+
+@Component({
+  selector: 'app-control',
+  standalone: true,
+  imports: [],
+  templateUrl: './control.component.html',
+  styleUrl: './control.component.css',
+  // 让外部的标签渲染进来之后也可以使用到局部的css样式
+  encapsulation: ViewEncapsulation.None,
+  host: {
+    class: 'control'
+  }
+})
+export class ControlComponent {
+  // label = input.required<string>();
+  @Input({required: true}) label!: string;
+}
+
+```
+
+
+
+![](images/20260227142223.png)
+
+### 在组件中注入动作
+
+```ts
+import {
+  Component,
+  ElementRef,
+  HostBinding,
+  HostListener,
+  ViewEncapsulation,
+  inject,
+  input,
+} from '@angular/core';
+
+@Component({
+  selector: 'app-control',
+  standalone: true,
+  imports: [],
+  templateUrl: './control.component.html',
+  styleUrl: './control.component.css',
+  encapsulation: ViewEncapsulation.None,
+  // 推荐在这里写
+  host: {
+    class: 'control',
+    '(click)': 'onClick()',
+  },
+})
+export class ControlComponent {
+  // @HostBinding('class') className = 'control';
+  // @HostListener('click') onClick() {
+  //   console.log('Clicked!');
+  // }
+  label = input.required<string>();
+  // 当前的组件信息
+  private el = inject(ElementRef);
+
+  onClick() {
+    console.log('Clicked!');
+    console.log(this.el);
+  }
+}
+
+```
+
+### 通过组件变量判断动态显示样式
+
+server-status.component.html
+
+这里的类绑定会根据组件中的`currentStatus`变量来判断是否返回为true，来绑定不同的class类。而显示出不同的效果。
+
+```html
+
+<div id="status" [class]="{
+  status: true,
+  'status-online': currentStatus === 'online',
+  'status-offline': currentStatus === 'offline',
+  'status-unknown': currentStatus === 'unknown',
+}">
+  @if (currentStatus === 'online') {
+    <p>Servers are online</p>
+    <p>All systems are operational.</p>
+  } @else if (currentStatus === 'offline') {
+    <p>Servers are offline</p>
+    <p>Functionality should be restored soon.</p>
+  } @else {
+    <p>Server status is unknown</p>
+    <p>Fetching server status failed.</p>
+  }
+</div>
+
+```
+
+部分样式
+
+```css
+.status-online p:first-of-type {
+  color: #6a3cb0;
+}
+
+.status-offline p:first-of-type {
+  color: #b22084;
+}
+
+.status-unknown p:first-of-type {
+  color: grey;
+}
+```
+
+server-status.component.ts
+
+```ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-server-status',
+  standalone: true,
+  imports: [],
+  templateUrl: './server-status.component.html',
+  styleUrl: './server-status.component.css'
+})
+export class ServerStatusComponent {
+  currentStatus = 'unknown';
+}
+```
+
+![](images/20260227145047.png)
