@@ -1560,21 +1560,165 @@ export class ServerStatusComponent {
 
 - 动态绑定样式
 
--   组件的生命周期
+## 组件的生命周期
 
-  构造函数应该尽量的简化
+官网参考地址: https://angular.cn/guide/components/lifecycle#
 
-  优先使用ngOnInit() {} ;使用关键字把这个方法实现固定死
+涉及的方法。
 
-  销毁函数
+```ts
+  // 最先执行
+  constructor() {
+    console.log('constructor exec');
+  }  
 
-- 获取表单的另外一种方式
+  // 在构造函数之后
+  ngOnInit() {
+    console.log('component INIT');
+  }
+
+
+  ngAfterViewInit() {
+    console.log('AFTER VIEW INIT');
+  }
+
+  // 组件销毁最后执行
+  // ngOnDestroy() {
+  //   clearTimeout(this.interval);
+  // }
+```
+
+使用implements关键字声明函数类型，防止在定义生命周期函数的时候定义错误。有了这个关键字后就必须定义响应的函数。
+
+```ts
+/
+export class ServerStatusComponent implements OnInit {
+  currentStatus: 'online' | 'offline' | 'unknown' = 'offline';
+  // 声明销毁函数
+  private destroyRef = inject(DestroyRef)
+
+  constructor() {
+    console.log('constructor exec');
+  }
+
+  ngOnInit() {
+    console.log('component INIT');
+
+    const interval = setInterval(() => {
+      const rnd = Math.random(); //0 - 0.99999999
+      if (rnd < 0.5) {
+        this.currentStatus = 'online';
+      } else if (rnd < 0.9) {
+        this.currentStatus = 'offline';
+      } else {
+        this.currentStatus = 'unknown';
+      }
+    },5000);
+
+     // 替代生命周期中的ngOnDestroy()
+    this.destroyRef.onDestroy(() => {
+      clearInterval(interval);
+    })
+  }
+```
+
+```ts
+export class LifecycleComponent
+  implements
+    OnInit,
+    OnChanges,
+    DoCheck,
+    AfterContentInit,
+    AfterContentChecked,
+    AfterViewInit,
+    AfterViewChecked,
+    OnDestroy
+{
+  @Input() text?: string;
+
+  constructor() {
+    console.log('CONSTRUCTOR');
+    console.log(this.text);
+  }
+
+  ngOnInit() {
+    console.log('ngOnInit');
+    console.log(this.text);
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    console.log('ngOnChanges');
+    console.log(changes);
+  }
+
+  ngDoCheck() {
+    console.log('ngDoCheck');
+  }
+
+  ngAfterContentInit() {
+    console.log('ngAfterContentInit');
+  }
+
+  ngAfterContentChecked() {
+    console.log('ngAfterContentChecked');
+  }
+
+  ngAfterViewInit() {
+    console.log('ngAfterViewInit');
+  }
+
+  ngAfterViewChecked() {
+    console.log('ngAfterViewChecked');
+  }
+
+  ngOnDestroy() {
+    console.log('ngOnDestroy');
+  }
+}
+```
+
+## 获取标签的值
+
+```html
+<form (ngSubmit)="onSubmit(titleInput.value, requestInput.value)">
+  <app-control label="Title">
+    <input name="title" id="title" #titleInput/>
+  </app-control>
+
+  <app-control label="Request">
+    <textarea name="request" id="request" rows="3" #requestInput> </textarea>
+  </app-control>
+
+  <p>
+    <!--  button[appButton] 对应的下面的标签  -->
+    <button appButton>
+      Submit
+      <span ngProjectAs="icon">⌲</span>
+    </button>
+  </p>
+</form>
+```
+
+**注意事项：**
+模板引用变量的作用域是整个模板，但建议避免重名（比如多个元素用同一个 #input）；
+不要过度依赖模板引用变量直接操作 DOM（Angular `推荐数据绑定`），仅在必要时使用（如获取原生 DOM 属性）。
+
+**总结**
+
+代码中的 #titleInput/#requestInput 是模板引用变量，核心作用是在模板中直接引用对应的 <input>/<textarea> DOM 元素；
+
+通过这些变量可以快速访问 DOM 元素的原生属性（如 value），并在事件绑定中把用户输入传递给组件方法；
+模板引用变量还能引用组件 / 指令，结合 @ViewChild 可在组件类中操作对应的对象。
+
+
+
+## viewchild和contentchild
 
 - 获取投影的元素
 
 
 
-声明周期的函数补充
+生命周期的函数补充
 
 信号特性
 
