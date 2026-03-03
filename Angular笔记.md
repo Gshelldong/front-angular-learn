@@ -234,6 +234,72 @@ export class UserComponent {
 </div>
 ```
 
+### effect()方法
+
+会在信号变化的时候执行函数。
+
+```ts
+import {
+  Component,
+  DestroyRef,
+  OnDestroy,
+  OnInit,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+
+@Component({
+  selector: 'app-server-status',
+  standalone: true,
+  imports: [],
+  templateUrl: './server-status.component.html',
+  styleUrl: './server-status.component.css',
+})
+export class ServerStatusComponent implements OnInit {
+  currentStatus = signal<'online' | 'offline' | 'unknown'>('offline');
+  private destroyRef = inject(DestroyRef);
+
+  constructor() {
+    effect(() => {
+      console.log(this.currentStatus());
+    });
+  }
+
+  ngOnInit() {
+    console.log('ON INIT');
+    const interval = setInterval(() => {
+      const rnd = Math.random(); // 0 - 0.99999999999999
+
+      if (rnd < 0.5) {
+        this.currentStatus.set('online');
+      } else if (rnd < 0.9) {
+        this.currentStatus.set('offline');
+      } else {
+        this.currentStatus.set('unknown');
+      }
+    }, 5000);
+
+    this.destroyRef.onDestroy(() => {
+      clearInterval(interval);
+    });
+  }
+
+  ngAfterViewInit() {
+    console.log('AFTER VIEW INIT');
+  }
+
+  // ngOnDestroy() {
+  //   clearTimeout(this.interval);
+  // }
+}
+effect()的作用
+```
+
+当 ngOnInit 里的定时器每 5 秒修改 currentStatus 的值时，effect 会被自动触发，控制台会打印出新的状态值
+
+无需手动订阅 / 取消订阅，Angular 会自动管理 `effect` 的生命周期（结合 `DestroyRef` 自动清理）
+
 ## Inputs方法
 
 组件之间传递参数，值。
@@ -531,6 +597,28 @@ get selectUserTasks() {
 
   <app-tasks [name]="selectedUser ? selectedUser.name : ''" />
 </main>
+```
+
+@empty如果循环的数组是空则显示定义的内容
+
+- $first 第一个，返回布尔值。
+- $last 最后一个，返回布尔值。
+- $count 更新for数组的长度。
+
+
+
+```html
+<div>
+  <ul>
+    @for (ticket of tickets; track ticket.id) {
+      <li>
+        <app-ticket [data]="ticket" />
+      </li>
+    } @empty {
+      <p>No tickets available.</p>
+    }
+  </ul>
+</div>
 ```
 
 
@@ -1677,6 +1765,20 @@ export class LifecycleComponent
 }
 ```
 
+生命周期的函数补充
+
+```ts
+  constructor() {
+    afterRender(() => {
+      console.log('afterRender');
+    });
+
+    afterNextRender(() => {
+      console.log('afterNextRender');
+    });
+  }
+```
+
 ## 获取标签的值
 
 ```html
@@ -1714,17 +1816,59 @@ export class LifecycleComponent
 
 ## viewchild和contentchild
 
+```ts
+export class NewTicketComponent {
+
+  protected readonly Title = Title;
+  // 可以直接获取到标签
+  // @ViewChild('form') private form?: ElementRef<HTMLFormElement>;
+    
+  // 需要在模板中声明变量 <form (ngSubmit)="onSubmit(titleInput.value, requestInput.value)" #form>
+  // >17之后更加的适用
+  private form = viewChild.required<ElementRef<HTMLFormElement>>('form');
+  
+  onSubmit(title: string, request:string) {
+    console.log('SUBMITED!');
+    console.log(title, request);
+    this.form().nativeElement.reset();
+  }
+}
+```
+
+
+
 - 获取投影的元素
 
+```ts
+  //插入内容
+  <app-control label="Title">
+    <input name="title" id="title" #titleInput/>
+  </app-control>
+
+  <app-control label="Request">
+    <textarea name="request" id="request" rows="3" #requestInput> </textarea>
+  </app-control>
+
+//content的部分
+<label>{{ label }}</label>
+<ng-content select="input, textarea"/>
+
+export class ControlComponent {
+  // label = input.required<string>();
+  @Input({required: true}) label!: string;
+
+  // 当前组件的信息
+  private el = inject(ElementRef);
+  // 这里只会选择input的两种标签
+  private control = contentChild<ElementRef<HTMLInputElement | HTMLTextAreaElement>>('input');
+  
+  onClick() {
+    console.log('clicked');
+    console.log(this.el);
+    console.log(this.control);
+  }
+}
+```
 
 
-生命周期的函数补充
-
-信号特性
-
-添加 票
-
-@for 新特性$变量
-
-添加票的样式
 
