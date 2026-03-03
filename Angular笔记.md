@@ -1572,3 +1572,15 @@ export class ServerStatusComponent {
 
 - 获取投影的元素
 
+
+
+声明周期的函数补充
+
+信号特性
+
+添加 票
+
+@for 新特性$变量
+
+添加票的样式
+
