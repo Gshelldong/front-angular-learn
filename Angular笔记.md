@@ -599,13 +599,25 @@ get selectUserTasks() {
 </main>
 ```
 
-@empty如果循环的数组是空则显示定义的内容
-
 - $first 第一个，返回布尔值。
 - $last 最后一个，返回布尔值。
 - $count 更新for数组的长度。
 
+```html
+<div>
+  <ul>
+    @for (ticket of tickets; track ticket.id) {
+      <li>
+        <app-ticket [data]="ticket" /> - {{ $last }}
+      </li>
+    } @empty {
+      <p>No tickets available.</p>
+    }
+  </ul>
+</div>
+```
 
+@empty如果循环的数组是空则显示定义的内容
 
 ```html
 <div>
@@ -1652,6 +1664,8 @@ export class ServerStatusComponent {
 
 官网参考地址: https://angular.cn/guide/components/lifecycle#
 
+简单来说就是声明组件，一个类中，内置函数的执行顺序，根据不同的功能需要把功能写对到对应的内置函数中。来实现不同的效果。
+
 涉及的方法。
 
 ```ts
@@ -1907,6 +1921,10 @@ export class ControlComponent {
  服务用来在多个组件中共用逻辑和数据。
 
 服务注入的三种写法
+
+- 在服务中声明root
+- 在启动文件中写provider
+- 在组件中使用provider
 
 在启动文件中使用服务注入
 
