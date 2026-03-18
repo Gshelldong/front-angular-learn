@@ -1840,13 +1840,13 @@ export class NewTicketComponent {
 - 获取投影的元素
 
 ```ts
-  //插入内容
+  //插入内容,并且打上input标签
   <app-control label="Title">
-    <input name="title" id="title" #titleInput/>
+    <input name="title" id="title" #titleInput #input/>
   </app-control>
 
   <app-control label="Request">
-    <textarea name="request" id="request" rows="3" #requestInput> </textarea>
+    <textarea name="request" id="request" rows="3" #requestInput #input> </textarea>
   </app-control>
 
 //content的部分
@@ -1865,10 +1865,82 @@ export class ControlComponent {
   onClick() {
     console.log('clicked');
     console.log(this.el);
-    console.log(this.control);
+    console.log(this.control());
   }
 }
 ```
 
 
+
+49.ticket完成按钮，点击之后帮i的那个样式
+
+提交表单使用双向绑定的方式(自定义双向绑定 )
+
+
+
+## 指令
+
+指令没有模板，只是增强标签的属性。
+
+新应用，判断用户
+
+比如用户在点击链接的时候需要用户确认是否跳转的场景
+
+自定义增强指令 
+
+使用指令修改页面元素
+
+在组件中使用host绑定指令
+
+## 管道
+
+用于在模板中转换值，就像是linux中的管道一样的用法，在angular中可以给管道添加参数，影响管道的功能。
+
+2.making sense uf pipes
+
+- 使用内置管道
+- 创建自定义管道
+- 构建一个排序的管道
+
+## 服务和依赖注入
+
+ 服务用来在多个组件中共用逻辑和数据。
+
+服务注入的三种写法
+
+在启动文件中使用服务注入
+
+在组件中使用providers 注入，这样可以隔离不同组件具有相同样式的服务，如果使用root注入的话服务是全局的。
+
+在服务中注入服务
+
+
+
+## RXJS
+
+使用间隔函数更新ui或者发送http请求 
+
+interval map运算符 订阅
+
+信号和observable
+
+两者的互相转换
+
+## HTTP
+
+http模块方法
+
+错误处理
+
+请求拦截
+
+## Form
+
+模板驱动表单
+
+验证属性
+
+提交之后重置表单内容
+
+保存表单的输入数据
 
