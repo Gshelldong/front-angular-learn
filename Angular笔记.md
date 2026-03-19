@@ -1946,7 +1946,143 @@ interval map运算符 订阅
 
 ## HTTP
 
-http模块方法
+### http模块方法
+
+使用get方法获取后端数据。
+
+```ts
+import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+
+import { Place } from '../place.model';
+import { PlacesComponent } from '../places.component';
+import { PlacesContainerComponent } from '../places-container/places-container.component';
+import {HttpClient} from "@angular/common/http";
+import {map} from "rxjs";
+
+@Component({
+  selector: 'app-available-places',
+  standalone: true,
+  templateUrl: './available-places.component.html',
+  styleUrl: './available-places.component.css',
+  imports: [PlacesComponent, PlacesContainerComponent],
+})
+
+export class AvailablePlacesComponent implements OnInit {
+  places = signal<Place[] | undefined>(undefined);
+
+  private httpClient = inject(HttpClient);
+  private destoryRef = inject(DestroyRef);
+
+  // 组件在初始化的时候就要数据来渲染
+  ngOnInit() {
+    const subscription = this.httpClient
+      // 使用get方法来获取指定url的数据
+      .get<{places: Place[]}>('http://localhost:3000/places')
+      // 把拿到的数据进行处理
+      .pipe(
+        map((resData) => resData.places)
+      )
+      // Observable 必须订阅才会真正发送请求
+      .subscribe({
+        // 拿到数据之后的动作
+        next: (places) => {
+          this.places.set(places)
+        }}
+     )
+    
+    // 释放请求
+    this.destoryRef.onDestroy(() => {
+      subscription.unsubscribe();
+    })
+  }
+}
+
+```
+
+HttpClient方法注入需要提供 HttpClient 服务（Angular 独立组件必须手动导入），因为全局都要使用建议在启动文件中直接导入。全局生效。
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser';
+
+import { AppComponent } from './app/app.component';
+import {provideHttpClient} from "@angular/common/http";
+
+bootstrapApplication(AppComponent, {
+  providers: [provideHttpClient()] // 注入HttpClient服务
+}).catch((err) => console.error(err));
+
+```
+
+等待状态处理complete
+
+实现一个正在等待后端的消息提示
+
+```ts
+import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+
+import { Place } from '../place.model';
+import { PlacesComponent } from '../places.component';
+import { PlacesContainerComponent } from '../places-container/places-container.component';
+import {HttpClient} from "@angular/common/http";
+import {map} from "rxjs";
+
+@Component({
+  selector: 'app-available-places',
+  standalone: true,
+  templateUrl: './available-places.component.html',
+  styleUrl: './available-places.component.css',
+  imports: [PlacesComponent, PlacesContainerComponent],
+})
+
+export class AvailablePlacesComponent implements OnInit {
+  places = signal<Place[] | undefined>(undefined);
+  isFetching = signal(false); // 声明一个是否等待的变量默认为false
+  private httpClient = inject(HttpClient);
+  private destoryRef = inject(DestroyRef);
+
+  ngOnInit() {
+    this.isFetching.set(true);  // 组件刚开始的时候是正在请求的所以置为true
+    const subscription = this.httpClient
+      .get<{places: Place[]}>('http://localhost:3000/places')
+      .pipe(
+        map((resData) => resData.places)
+      )
+      .subscribe({
+        next: (places) => {
+          this.places.set(places)
+        },
+        complete: () => {
+          // 请求完成之后把状态置为false
+          this.isFetching.set(false);
+        }
+      }
+     )
+
+    this.destoryRef.onDestroy(() => {
+      subscription.unsubscribe();
+    })
+  }
+}
+
+```
+
+前端页面的实现，这样就可以让正在请求的时候有提示信息。
+
+```html
+  @if (isFetching()) {
+    <p class="fallback-text">Fetching available places...</p>
+  }
+```
+
+
+
+
+
+
+
+
+
+等待后端fecting
 
 错误处理
 
