@@ -2175,7 +2175,7 @@ export class AvailablePlacesComponent implements OnInit {
 
 控制地点的请求places接口这样两者返回不同的数据，渲染的结果就不同了。
 
-![image-20260320163654476](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260320163654476.png)
+![image-20260320163654476](images/image-20260320163654476.png)
 
 ### service封装
 
