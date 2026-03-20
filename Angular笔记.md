@@ -723,7 +723,7 @@ import {FormsModule} from '@angular/forms';
 
 ### 示例
 
-![QQ_1774016980073](C:\Users\GONGXI~1\AppData\Local\Temp\QQ_1774016980073.png)
+![QQ_1774016980073](images/QQ_1774016980073.png)
 
  rect.component.*
 
