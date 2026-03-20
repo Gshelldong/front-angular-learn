@@ -23,6 +23,6 @@ export class ControlComponent {
   onClick() {
     console.log('clicked');
     console.log(this.el);
-    console.log(this.control);
+    console.log(this.control());
   }
 }

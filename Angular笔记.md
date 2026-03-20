@@ -1940,13 +1940,11 @@ export class ControlComponent {
 
 interval map运算符 订阅
 
-信号和observable
-
-两者的互相转换
+信号和observable-两者的互相转换
 
 ## HTTP
 
-### http模块方法
+### get方法
 
 使用get方法获取后端数据。
 
@@ -2013,9 +2011,11 @@ bootstrapApplication(AppComponent, {
 
 ```
 
-等待状态处理complete
+### complete
 
-实现一个正在等待后端的消息提示
+订阅完成之后的动作complete.
+
+实现一个正在等待后端返回数据的消息提示。
 
 ```ts
 import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
@@ -2074,7 +2074,10 @@ export class AvailablePlacesComponent implements OnInit {
   }
 ```
 
+### 捕捉和处理错误
 
+```ts
+```
 
 
 
