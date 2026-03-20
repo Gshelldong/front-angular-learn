@@ -478,16 +478,28 @@ export class UserComponent {
 
 onSelectUser($event) 是父组件触发的函数和接收的输入的参数。
 
+$event 是一个user对象
+
 ```bash
-# app.component.html
+# user.component.html
 <app-user [avatar]="user.avatar" [name]="user.name" [id]="user.id" (select)="onSelectUser($event)" )/>
 
-# app.component.ts
-import { Component } from '@angular/core';
-import { HeaderComponent } from './header/header.component'
-import { UserComponent } from './user/user.component';
-import {DUMMY_USERS} from './dummy-users';
+# user.component.ts
+export class UserComponent {
+  @Input({required: true}) user!: User;
+  @Input({required: true}) selected!: boolean;  
 
+  ......
+  select = output<string>();
+
+  onSelectUser() {
+    // 这里把user 的id提交出去了
+    this.select.emit(this.user.id);
+  }
+}
+
+
+# app.component.ts
 @Component({
   selector: 'app-root',
   imports: [HeaderComponent, UserComponent],
@@ -498,6 +510,7 @@ import {DUMMY_USERS} from './dummy-users';
 export class AppComponent {
   users = DUMMY_USERS;
 
+  # 父组件接收来组子组件的输出所以是user 的id
   onSelectUser(id: string) {
     console.log("you select user" + id);
   }
@@ -1970,6 +1983,8 @@ export class AvailablePlacesComponent implements OnInit {
 
   private httpClient = inject(HttpClient);
   private destoryRef = inject(DestroyRef);
+    
+  // constructor(private httpClient: HttpClient) {}
 
   // 组件在初始化的时候就要数据来渲染
   ngOnInit() {
@@ -1997,7 +2012,9 @@ export class AvailablePlacesComponent implements OnInit {
 
 ```
 
-HttpClient方法注入需要提供 HttpClient 服务（Angular 独立组件必须手动导入），因为全局都要使用建议在启动文件中直接导入。全局生效。
+HttpClient方法注入需要提供 HttpClient 服务（Angular 独立组件必须手动导入），因为全局都要使用建议在启动文件中直接导入，全局生效。
+
+或者在构造函数中注入。
 
 ```ts
 import { bootstrapApplication } from '@angular/platform-browser';
@@ -2013,7 +2030,7 @@ bootstrapApplication(AppComponent, {
 
 ### complete
 
-订阅完成之后的动作complete.
+complete 订阅完成之后的动作.
 
 实现一个正在等待后端返回数据的消息提示。
 
@@ -2077,9 +2094,221 @@ export class AvailablePlacesComponent implements OnInit {
 ### 捕捉和处理错误
 
 ```ts
+export class AvailablePlacesComponent implements OnInit {
+  places = signal<Place[] | undefined>(undefined);
+  isFetching = signal(false);
+  // 定义一个存放error信息的信号
+  error = signal('');
+
+  private httpClient = inject(HttpClient);
+  private destoryRef = inject(DestroyRef);
+
+  ngOnInit() {
+    this.isFetching.set(true);
+    const subscription = this.httpClient
+      .get<{places: Place[]}>('http://localhost:3000/places')
+      .pipe(
+        map((resData) => resData.places),
+        // 捕捉错误
+        catchError((error)=> {
+          // 把错误打印到控制台
+          console.log(error);
+          return throwError(
+            // 重新定义错误
+            () => new Error("Something went wrong fetching the available places. Please try again later."),
+          );
+        })
+      )
+      .subscribe({
+        next: (places) => {
+          this.places.set(places)
+        },
+        // 在订阅之后，设置错误消息。
+        error: (error: Error) => {
+          this.error.set(error.message);
+        },
+        complete: () => {
+          this.isFetching.set(false);
+        }
+      }
+     )
+
+    this.destoryRef.onDestroy(() => {
+      subscription.unsubscribe();
+    })
+  }
+}
 ```
 
+页面中处理error的信号
 
+```html
+<!-- 有返回而且不报错的情况下 -->
+  @if (isFetching() && !error()) {
+    <p class="fallback-text">Fetching available places...</p>
+  }
+
+  @if (error()) {
+    <p class="fallback-text">{{ error() }}</p>
+  }
+```
+
+### 发送PUT请求
+
+```ts
+  // 在函数中发送请求,参数是一个传入的对象
+  onSelectPlace(selectedPlace: Place) {
+    this.httpClient.put("http://localhost:3000/user-places", {
+      placeId: selectedPlace.id
+    })
+      .subscribe(
+        {
+          next: (resData) => {
+            console.log(resData);
+          }
+        }
+      )
+  }
+```
+
+控制user-places组件的地方在组件初始化的时候直接请求user相关的接口，这样用户只需要查询接口的数据就可以了。
+
+控制地点的请求places接口这样两者返回不同的数据，渲染的结果就不同了。
+
+![image-20260320163654476](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260320163654476.png)
+
+### service封装
+
+service封装只封装接口的地址和错误信息，把订阅之后的动作和释放在要使用的组件中，这样既把服务的动作抽象了出来，又在各个组件中把各种特定的功能实现了。
+
+```ts
+// places.service.ts
+import {inject, Injectable, signal} from '@angular/core';
+
+import { Place } from './place.model';
+import {catchError, map, throwError} from "rxjs";
+import {HttpClient} from "@angular/common/http";
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PlacesService {
+  private userPlaces = signal<Place[]>([]);
+  private httpClient = inject(HttpClient);
+
+  loadedUserPlaces = this.userPlaces.asReadonly();
+
+  // 只封装了接口的url和错误消息
+  loadAvailablePlaces() {
+    return this.fetchPlaces("http://localhost:3000/places", "Something went wrong fetching the available places. Please try again later.");
+  }
+
+  loadUserPlaces() {
+    return this.fetchPlaces('http://localhost:3000/user-places','Something went wrong fetching your favorite places. Please try again later.')
+  }
+
+  addPlaceToUserPlaces(placeId: string) {
+    return this.httpClient.put('http://localhost:3000/user-places', {
+      placeId: placeId,
+    });
+  }
+
+  removeUserPlace(place: Place) {}
+
+  // 对公共部分在进行统一的处理
+  private fetchPlaces(url: string, errorMessage: string) {
+    return this.httpClient
+      .get<{ places: Place[] }>(url)
+      .pipe(
+        map((resData) => resData.places),
+        catchError((error) => {
+          console.log(error);
+          return throwError(
+            () =>
+              new Error(
+                errorMessage
+              )
+          );
+        })
+      )
+  }
+}
+
+```
+
+在组件中的使用
+
+```ts
+// user-places.component.ts
+
+import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+
+import { Place } from '../place.model';
+import { PlacesComponent } from '../places.component';
+import { PlacesContainerComponent } from '../places-container/places-container.component';
+import {HttpClient} from "@angular/common/http";
+import {catchError, map, throwError} from "rxjs";
+import {PlacesService} from "../places.service";
+
+@Component({
+  selector: 'app-available-places',
+  standalone: true,
+  templateUrl: './available-places.component.html',
+  styleUrl: './available-places.component.css',
+  imports: [PlacesComponent, PlacesContainerComponent],
+})
+
+export class AvailablePlacesComponent implements OnInit {
+  places = signal<Place[] | undefined>(undefined);
+  isFetching = signal(false);
+  error = signal('');
+
+  private httpClient = inject(HttpClient);
+  private destoryRef = inject(DestroyRef);
+  private placesService = inject(PlacesService);
+
+  ngOnInit() {
+    this.isFetching.set(true);
+    // 这里直接使用service封装好的接口地址和错误消息
+    // 组件中只负责请求和处理错误还有处理返回的数据
+    const subscription = this.placesService.loadAvailablePlaces()
+      .subscribe({
+        next: (places) => {
+          this.places.set(places)
+        },
+        error: (error: Error) => {
+          this.error.set(error.message);
+        },
+        complete: () => {
+          this.isFetching.set(false);
+        }
+      }
+     )
+    // 在组件中控制接口什么时候释放掉
+    // 跟随组件生命周期更科学
+    this.destoryRef.onDestroy(() => {
+      subscription.unsubscribe();
+    })
+  }
+
+  onSelectPlace(selectedPlace: Place) {
+    const subscription = this.placesService.addPlaceToUserPlaces(selectedPlace.id)
+      .subscribe(
+        {
+          next: (resData) => {
+            console.log(resData);
+          }
+        }
+      )
+    this.destoryRef.onDestroy(
+      () => {
+        subscription.unsubscribe();
+      }
+    )
+  }
+}
+
+```
 
 
 
