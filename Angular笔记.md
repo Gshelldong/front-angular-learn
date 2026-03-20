@@ -429,6 +429,16 @@ export class UserComponent {
 
 ```
 
+设置别名
+
+这个要求输入的参数就是data
+
+```ts
+as = input.required<string>({alias: 'data'});
+```
+
+
+
 2025/12/23 练习到12-required-inputs
 
 ## Output输出属性
@@ -692,7 +702,7 @@ import { NgFor, NgIf } from '@angular/common';
 ## 语法记录
 
 ```ts
-[class.active]="selected"  selected是一个布尔值，
+[class.active]="selected"  selected是一个布尔值，需要在ts中定义下
 
 //当 selected = true 时，元素会自动添加 active 类 → 元素最终会有 class="active"；
 //当 selected = false 时，元素会自动移除 active 类 → 元素不会包含 active 类。
@@ -710,6 +720,83 @@ import {FormsModule} from '@angular/forms';
 // 模板中使用
 [(ngModel)]="enteredDate"
 ```
+
+### 示例
+
+![QQ_1774016980073](C:\Users\GONGXI~1\AppData\Local\Temp\QQ_1774016980073.png)
+
+ rect.component.*
+
+```ts
+<div
+  id="rect"
+  // 在这里进行宽高的绑定
+  [style.width]="size().width + 'px'"
+  [style.height]="size().height + 'px'"
+  (click)="onReset()"
+></div>
+
+@Component({
+  selector: 'app-rect',
+  standalone: true,
+  imports: [],
+  templateUrl: './rect.component.html',
+  styleUrl: './rect.component.css',
+})
+export class RectComponent {
+  // 要求输入一个宽高的尺寸
+  size = input.required<{ width: string; height: string }>();
+  sizeChange = output<{ width: string; height: string }>();
+
+  // 重置功能
+  onReset() {
+    this.sizeChange.emit({
+      width: '80',
+      height: '80'
+    })
+  }
+}
+```
+
+app.component.*
+
+```ts
+<div id="inputs">
+  <p>
+    <label>Width</label>
+    <input type="number" step="1.0" [(ngModel)]="rectSize.width" />
+  </p>
+  <p>
+    <label>Height</label>
+    <input type="number" step="1.0" [(ngModel)]="rectSize.height" />
+  </p>
+</div>
+// 在这里不仅会输入rectSize还会把输出的sizeChange进行双向绑定，在点击按钮之后可以直接充值图形的大小
+// 直接绑定到组件中的变量rectSize
+<app-rect [(size)]="rectSize"/>
+
+        
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  templateUrl: './app.component.html',
+  imports: [RectComponent, FormsModule],
+})
+export class AppComponent {
+  rectSize = {
+    width: '200',
+    height: '200',
+  };
+
+  // 也可是使用输出触发函数的方式
+  resetSize(sizeObj: { width: string; height: string }) {
+    this.rectSize.width = sizeObj.width,
+    this.rectSize.height = sizeObj.height
+  }
+}
+```
+
+
 
 ## ng-content
 
@@ -1808,6 +1895,8 @@ export class LifecycleComponent
 
 ## 获取标签的值
 
+ [new-ticket.component.html](4.cmp-deep-dive\cmp-deep-dive\src\app\dashboard\tickets\new-ticket\new-ticket.component.html) 
+
 ```html
 <form (ngSubmit)="onSubmit(titleInput.value, requestInput.value)">
   <app-control label="Title">
@@ -1841,7 +1930,9 @@ export class LifecycleComponent
 
 
 
-## viewchild和contentchild
+### viewchild和contentchild
+
+ [new-ticket.component.ts](4.cmp-deep-dive\cmp-deep-dive\src\app\dashboard\tickets\new-ticket\new-ticket.component.ts) 
 
 ```ts
 export class NewTicketComponent {
@@ -1897,9 +1988,91 @@ export class ControlComponent {
 }
 ```
 
+### 输出触发空事件
+
+在输出中提交一个空事件实际上可以触发一个函数。
+
+```ts
+// ticket.component.*
+<button (click)="onMarkAsCompleted()">Mark as completed</button>
+
+@Component({
+  selector: 'app-ticket',
+  standalone: true,
+  imports: [],
+  templateUrl: './ticket.component.html',
+  styleUrl: './ticket.component.css'
+})
+export class TicketComponent {
+  data = input.required<Ticket>();
+  detailsVisible = signal(false);
+  close = output();
+
+  onToggleDetails() {
+    // this.detailsVisible.set(!this.detailsVisible());
+    this.detailsVisible.update((wasVisible) => !wasVisible);
+  }
+
+  // 触发一个点击的事件并输出
+  onMarkAsCompleted() {
+    this.close.emit();
+  }
+}
 
 
-49.ticket完成按钮，点击之后帮i的那个样式
+
+// tickets.component.*
+// 父组件在接收到点击的事件的时候就会直接触发在父组件中的函数
+<app-ticket [data]="ticket" (close)="onCloseTicket(ticket.id)"/>
+
+@Component({
+  selector: 'app-tickets',
+  standalone: true,
+  imports: [
+    NewTicketComponent,
+    TicketComponent
+  ],
+  templateUrl: './tickets.component.html',
+  styleUrl: './tickets.component.css'
+})
+export class TicketsComponent {
+  tickets : Ticket[] = [];
+
+  onAdd(ticketData: {title: string, request:string}) {
+    const ticket: Ticket = {
+      title: ticketData.title,
+      request: ticketData.request,
+      id: Math.random().toString(),
+      status: 'open'
+    }
+
+    this.tickets.push(ticket);
+  }
+
+  // 被触发的函数
+  onCloseTicket(id: string) {
+    this.tickets = this.tickets.map((ticket) => {
+      if (ticket.id === id) {
+        return { ...ticket, status: 'closed' }
+      }
+      return ticket;
+    });
+  }
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 提交表单使用双向绑定的方式(自定义双向绑定 )
 
