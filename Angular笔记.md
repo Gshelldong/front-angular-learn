@@ -2064,39 +2064,318 @@ export class TicketsComponent {
 
 
 
-
-
-
-
-
-
-
-
-
-
-提交表单使用双向绑定的方式(自定义双向绑定 )
-
-
-
 ## 指令
 
 指令没有模板，只是增强标签的属性。
 
-新应用，判断用户
+常用的指令比如双向绑定的指令`ngModel`
 
-比如用户在点击链接的时候需要用户确认是否跳转的场景
+- @if
+- ngIf
 
-自定义增强指令 
+**案例：两个组件通过服务注入共享数据**
 
-使用指令修改页面元素
+服务是创建在组件a中的，这样也可以在组件之间数据共享。
 
-在组件中使用host绑定指令
+![](D:\前端\项目\images\QQ20260321-172835.png)
 
-## 管道
+auth组件
+
+```ts
+<h2>Authenticate to access all resources</h2>
+1.触发提交函数
+<form (ngSubmit)="onSubmit()">
+  <p>
+    <label>E-Mail</label>
+    <input type="email" name="email" [(ngModel)]="email" />
+  </p>
+
+  <p>
+    <label>Password</label>
+    <input type="password" name="password" [(ngModel)]="password" />
+  </p>
+
+  <p>
+    <button>Login</button>
+  </p>
+</form>
+
+// 触发提交表单和修改service
+@Component({
+  selector: 'app-auth',
+  standalone: true,
+  imports: [FormsModule],
+  templateUrl: './auth.component.html',
+  styleUrl: './auth.component.css',
+})
+export class AuthComponent {
+  email = signal('');
+  password = signal('');
+    // 这里引入service
+  private authService = inject(AuthService);
+
+  onSubmit() {
+      // 2.提交的动作是触发向service中提交数据
+    this.authService.authenticate(this.email(), this.password());
+  }
+}
+
+
+
+// service
+@Injectable({
+  providedIn: 'root',
+})
+export class AuthService {
+    // 4.变量被重新赋值
+  activePermission = signal<Permission>('guest');
+
+  // 3.接收提交的参数并修改变量
+  authenticate(email: string, password: string) {
+    console.log(email, password);
+    if (email === 'admin@example.com' && password === 'admin') {
+      this.activePermission.set('admin');
+    } else if (email === 'user@example.com' && password === 'user') {
+      this.activePermission.set('user');
+    } else {
+      this.activePermission.set('guest');
+    }
+  }
+
+  logout() {
+    this.activePermission.set('guest');
+  }
+}
+
+
+```
+
+app父组件
+
+```ts
+  6.最后显示在前端的页面上
+  @if (isAdmin()) {
+    <p>admin is logging!</p>
+  } @else {
+   <p>other user.</p>
+  }
+
+// auth.component.ts
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css',
+  imports: [AuthComponent, LearningResourcesComponent],
+})
+export class AppComponent {
+    // 注入认证组件中的service
+  authService = inject(AuthService);
+    // 5.通过信号的计算方法判断是否是管理员用户
+  isAdmin = computed(() => this.authService.activePermission() === 'admin');
+}
+```
+
+
+
+### 属性指令
+
+创建指令
+
+ [safe-link.directive.ts](6.directives-deep-dive\directives-deep-dive\src\app\safe-link.directive.ts) 
+
+```ts
+import { Directive, ElementRef, inject, input } from '@angular/core';
+
+// 组件的装饰器
+@Directive({
+    // 绑定的对象是a标签的appSafeLink类
+  selector: 'a[appSafeLink]',
+  standalone: true,
+    // 绑定之后给标签添加一个click的事件，触发对应的函数。
+  host: {
+    '(click)': 'onConfirmLeavePage($event)',
+  },
+})
+export class SafeLinkDirective {
+  queryParam = input('myapp', { alias: 'appSafeLink' });
+  private hostElementRef = inject<ElementRef<HTMLAnchorElement>>(ElementRef);
+
+  constructor() {
+    console.log('SafeLinkDirective is active!');
+  }
+
+    // 函数中有对应的功能
+  onConfirmLeavePage(event: MouseEvent) {
+    const wantsToLeave = window.confirm('Do you want to leave the app?');
+
+    if (wantsToLeave) {
+      const address = this.hostElementRef.nativeElement.href;
+      this.hostElementRef.nativeElement.href =
+          // 这里可以跳转的时候添加参数，主要是目标地址+自定义参数
+        address + '?from=' + this.queryParam();
+      return;
+    }
+
+    event.preventDefault();
+  }
+}
+
+```
+
+组件中使用
+
+```ts
+<a href="https://angular.dev" appSafeLink="myapp-docs-lin">Angular Documentation</a>
+
+// learning-resources.component.ts
+import { Component } from '@angular/core';
+// 导入指令不然不生效
+import {SafeLinkDirective} from "../safe-link.directive"
+
+@Component({
+  selector: 'app-learning-resources',
+  templateUrl: './learning-resources.component.html',
+  styleUrl: './learning-resources.component.css',
+  // 导入指令不然不生效
+  imports: [SafeLinkDirective],
+  standalone: true,
+})
+export class LearningResourcesComponent {}
+```
+
+
+
+### 结构指令
+
+```bash
+ng g d auth/auth --skip-tests
+```
+
+app
+
+```ts
+  <p *appAuth="'admin'" class="protected-content admin">
+    Only admins should see this!
+  </p>
+  <p *appAuth="'user'" class="protected-content unauthenticated">
+    Regular users should see this!
+  </p>
+  <p *appAuth="'guest'" class="protected-content authenticated">
+    Guest users should see this!
+  </p>
+```
+
+指令
+
+```ts
+// auth.directive
+
+import {
+  Directive,
+  TemplateRef,
+  ViewContainerRef,
+  effect,
+  inject,
+  input,
+} from '@angular/core';
+
+// 这里定义的是一个形状有user guest admin的string
+import { Permission } from './auth.model';
+import { AuthService } from './auth.service';
+
+@Directive({
+  selector: '[appAuth]',
+  standalone: true,
+})
+export class AuthDirective {
+  userType = input.required<Permission>({ alias: 'appAuth' });
+  private authService = inject(AuthService);
+  private templateRef = inject(TemplateRef);
+  private viewContainerRef = inject(ViewContainerRef);
+
+  constructor() {
+    effect(() => {
+        // 通过authService中用户变化的时候判断哪个部分的内容会显示
+        // 和上面的app页面中的定义相关
+      if (this.authService.activePermission() === this.userType()) {
+        this.viewContainerRef.createEmbeddedView(this.templateRef);
+      } else {
+        this.viewContainerRef.clear();
+      }
+    });
+  }
+}
+
+```
+
+在指令中再绑定指令，这样可以增加指令的功能比如打印日志。
+
+```ts
+//log.directive.ts
+创建日志指令
+import { Directive, ElementRef, inject } from '@angular/core';
+
+@Directive({
+  selector: '[appLog]',
+  standalone: true,
+  host: {
+    '(click)': 'onLog()',
+  },
+})
+export class LogDirective {
+  private elementRef = inject(ElementRef);
+
+  onLog() {
+    console.log('CLICKED');
+    console.log(this.elementRef.nativeElement);
+  }
+}
+
+
+//safe-link.directive.ts
+import { Directive, ElementRef, inject, input } from '@angular/core';
+import {LogDirective} from "./log.directive";
+
+@Directive({
+  selector: 'a[appSafeLink]',
+  standalone: true,
+  host: {
+    '(click)': 'onConfirmLeavePage($event)',
+  },
+    // 在另外一个指令中引入指令
+  hostDirectives: [LogDirective]
+})
+export class SafeLinkDirective {
+  queryParam = input('myapp', { alias: 'appSafeLink' });
+  private hostElementRef = inject<ElementRef<HTMLAnchorElement>>(ElementRef);
+
+  constructor() {
+    console.log('SafeLinkDirective is active!');
+  }
+
+  onConfirmLeavePage(event: MouseEvent) {
+    const wantsToLeave = window.confirm('Do you want to leave the app?');
+
+    if (wantsToLeave) {
+      const address = this.hostElementRef.nativeElement.href;
+      this.hostElementRef.nativeElement.href =
+        address + '?from=' + this.queryParam();
+      return;
+    }
+
+    event.preventDefault();
+  }
+}
+```
+
+
+
+##  管道
 
 用于在模板中转换值，就像是linux中的管道一样的用法，在angular中可以给管道添加参数，影响管道的功能。
 
-2.making sense uf pipes
+参考地址：https://angular.cn/guide/templates/pipes#
 
 - 使用内置管道
 - 创建自定义管道
@@ -2104,12 +2383,12 @@ export class TicketsComponent {
 
 ## 服务和依赖注入
 
- 服务用来在多个组件中共用逻辑和数据。
+服务用来在多个组件中共用逻辑和数据。
 
 服务注入的三种写法
 
 - 在服务中声明root
-- 在启动文件中写provider
+- 在启动文件main.ts中写provider
 - 在组件中使用provider
 
 在启动文件中使用服务注入
