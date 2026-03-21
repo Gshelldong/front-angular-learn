@@ -2397,8 +2397,6 @@ export class SafeLinkDirective {
 
 在服务中注入服务
 
-
-
 ## RXJS
 
 使用间隔函数更新ui或者发送http请求 
@@ -2447,6 +2445,7 @@ export class AvailablePlacesComponent implements OnInit {
       .pipe(
         map((resData) => resData.places)
       )
+      //.pipe() 可以加多个pipe
       // Observable 必须订阅才会真正发送请求
       .subscribe({
         // 拿到数据之后的动作
@@ -2762,15 +2761,333 @@ export class AvailablePlacesComponent implements OnInit {
 
 ```
 
+### 在服务中使用信号更新页面
+
+```ts
+import {inject, Injectable, signal} from '@angular/core';
+
+import { Place } from './place.model';
+import {catchError, map, tap, throwError} from "rxjs";
+import {HttpClient} from "@angular/common/http";
+
+@Injectable({
+  providedIn: 'root',
+})
+export class PlacesService {
+  // 这个存放了用户组件的信号可以在service中被操作更新
+  private userPlaces = signal<Place[]>([]);
+  private httpClient = inject(HttpClient);
+
+  // 这里作为用户地点的只读信号，给用户组件读取
+  loadedUserPlaces = this.userPlaces.asReadonly();
+
+  loadAvailablePlaces() {
+    return this.fetchPlaces("http://localhost:3000/places", "Something went wrong fetching the available places. Please try again later.");
+  }
+
+  loadUserPlaces() {
+    return this.fetchPlaces('http://localhost:3000/user-places','Something went wrong fetching your favorite places. Please try again later.')
+      .pipe(
+        // 1.在加载用户地点数据的时候就更新用户地点的信号
+        // tap 在处理之后还会把数据原封不动的向下传递
+        tap({
+          next: (userPlaces) => {this.userPlaces.set(userPlaces);}
+        })
+      )
+  }
+
+  addPlaceToUserPlaces(place: Place) {
+    // 声明一个原始用于存储用户地点的变量
+    const prevPlaces = this.userPlaces()
+
+    // 这里只是前端点击的控制，如果有相同的对象就不会触发前端更新
+    if (!prevPlaces.some((p) => p.id === place.id)) {
+      // 用户在点击的时候直接更新前端界面的用户地点信号
+      this.userPlaces.set([...prevPlaces, place]);
+    }
+
+    return this.httpClient.put('http://localhost:3000/user-places', {
+      placeId: place.id,
+    }).pipe(
+      catchError((error) => {
+        // 提交到后端，如果捕捉报错那么就把用户地点的信号重置为原来的值
+        this.userPlaces.set(prevPlaces);
+        // 定义报错信息
+        return throwError(() => new Error('Failed to store selected place.'));
+      })
+    );
+  }
+
+  removeUserPlace(place: Place) {}
+
+  private fetchPlaces(url: string, errorMessage: string) {
+    return this.httpClient
+      .get<{ places: Place[] }>(url)
+      .pipe(
+        map((resData) => resData.places),
+        catchError((error) => {
+          console.log(error);
+          return throwError(
+            () =>
+              new Error(
+                errorMessage
+              )
+          );
+        })
+      )
+  }
+}
+
+```
+
+用户界面的显示
+
+```ts
+@Component({
+  selector: 'app-user-places',
+  standalone: true,
+  templateUrl: './user-places.component.html',
+  styleUrl: './user-places.component.css',
+  imports: [PlacesContainerComponent, PlacesComponent],
+})
+export class UserPlacesComponent implements OnInit {
+
+  isFetching = signal(false);
+  error = signal('');
+  private httpClient = inject(HttpClient);
+  private destroyRef = inject(DestroyRef);
+  private placesService = inject(PlacesService);
+
+  // 用户显示的数据由服务的信号管理
+  // 因为在服务中把用户地点作为信号处理了，在这里直接就是使用的服务中共享的信号，所以服务中控制了更新
+  // 组件中就会对应的更新，模板中自然看到了实现的效果。
+  places = this.placesService.loadedUserPlaces;
+
+
+  ngOnInit() {
+    this.isFetching.set(true);
+    const subscription = this.placesService.loadUserPlaces()
+      .subscribe({
+        error: (error: Error) => {
+          this.error.set(error.message);
+        },
+        complete: () => {
+          this.isFetching.set(false);
+        },
+      });
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
+}
+
+```
 
 
 
+### delete请求
 
-等待后端fecting
+```ts
+@Injectable({
+  providedIn: 'root',
+})
+export class PlacesService {
+  private userPlaces = signal<Place[]>([]);
+  private httpClient = inject(HttpClient);
 
-错误处理
+  loadedUserPlaces = this.userPlaces.asReadonly();
 
-请求拦截
+  loadAvailablePlaces() {
+    return this.fetchPlaces("http://localhost:3000/places", "Something went wrong fetching the available places. Please try again later.");
+  }
+
+  loadUserPlaces() {
+    return this.fetchPlaces('http://localhost:3000/user-places','Something went wrong fetching your favorite places. Please try again later.')
+      .pipe(
+        tap({
+          next: (userPlaces) => {this.userPlaces.set(userPlaces);}
+        })
+      )
+  }
+
+  addPlaceToUserPlaces(place: Place) {
+    const prevPlaces = this.userPlaces()
+
+    // 这里只是前端点击的控制，如果有相同的对象就不会触发前端更新
+    if (!prevPlaces.some((p) => p.id === place.id)) {
+      this.userPlaces.set([...prevPlaces, place]);
+    }
+
+    return this.httpClient.put('http://localhost:3000/user-places', {
+      placeId: place.id,
+    }).pipe(
+      catchError((error) => {
+        this.userPlaces.set(prevPlaces);
+        return throwError(() => new Error('Failed to store selected place.'));
+      })
+    );
+  }
+
+  removeUserPlace(place: Place) {
+    const prevPlaces = this.userPlaces();
+
+    // 这里值判断前端的更新情况
+    if (prevPlaces.some((p) => p.id === place.id)) {
+      this.userPlaces.set(prevPlaces.filter((p) => p.id !== place.id));
+    }
+
+    // 根据组件中提交过来的place获取id并发送请求
+    return this.httpClient
+      .delete('http://localhost:3000/user-places/' + place.id)
+      .pipe(
+        catchError((error) => {
+          this.userPlaces.set(prevPlaces);
+          // this.errorService.showError('Failed to remove the selected place.');
+          return throwError(
+            () => new Error('Failed to remove the selected place.')
+          );
+        })
+      );
+  }
+
+  private fetchPlaces(url: string, errorMessage: string) {
+    return this.httpClient
+      .get<{ places: Place[] }>(url)
+      .pipe(
+        map((resData) => resData.places),
+        catchError((error) => {
+          console.log(error);
+          return throwError(
+            () =>
+              new Error(
+                errorMessage
+              )
+          );
+        })
+      )
+  }
+}
+
+```
+
+组件中使用这个服务
+
+```ts
+@Component({
+  selector: 'app-user-places',
+  standalone: true,
+  templateUrl: './user-places.component.html',
+  styleUrl: './user-places.component.css',
+  imports: [PlacesContainerComponent, PlacesComponent],
+})
+export class UserPlacesComponent implements OnInit {
+
+  isFetching = signal(false);
+  error = signal('');
+  private httpClient = inject(HttpClient);
+  private destroyRef = inject(DestroyRef);
+  private placesService = inject(PlacesService);
+
+  // 用户显示的数据由服务的信号管理
+  places = this.placesService.loadedUserPlaces;
+
+  ngOnInit() {
+    this.isFetching.set(true);
+    const subscription = this.placesService.loadUserPlaces()
+      .subscribe({
+        error: (error: Error) => {
+          this.error.set(error.message);
+        },
+        complete: () => {
+          this.isFetching.set(false);
+        },
+      });
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
+
+  onRemovePlace(place: Place) {
+    // 这里把place传入了服务中
+    // 这里的place是子组件中输出的一个place对象
+    // 
+    const subscription = this.placesService.removeUserPlace(place).subscribe();
+
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
+}
+
+
+===子组件中place的输出===
+<ul>
+  @for (place of places(); track place.id) {
+    <li class="place-item">
+      <button (click)="onSelectPlace(place)">
+        <img
+          [src]="'http://localhost:3000/' + place.image.src"
+          [alt]="place.image.alt"
+        />
+        <h3>{{ place.title }}</h3>
+      </button>
+    </li>
+  }
+</ul>
+```
+
+
+
+### 请求拦截
+
+在发送请求之前可以拦截请求数据，在把数据修改之后再发送。
+
+```ts
+import { bootstrapApplication } from '@angular/platform-browser';
+import {
+  HttpEventType,
+  HttpHandlerFn,
+  HttpRequest,
+  provideHttpClient,
+  withInterceptors,
+} from '@angular/common/http';
+
+import { AppComponent } from './app/app.component';
+import { tap } from 'rxjs';
+
+// 请求拦截就是一个函数
+function loggingInterceptor(
+  request: HttpRequest<unknown>,
+  next: HttpHandlerFn
+) {
+  // const req = request.clone({
+  //   headers: request.headers.set('X-DEBUG', 'TESTING')
+  // });
+  console.log('[Outgoing Request]');
+  console.log(request);
+  return next(request).pipe(
+    tap({
+      next: event => {
+        if (event.type === HttpEventType.Response) {
+          console.log('[Incoming Response]');
+          console.log(event.status);
+          console.log(event.body);
+        }
+      }
+    })
+  );
+}
+
+// 在注入http的地方声明
+bootstrapApplication(AppComponent, {
+  providers: [provideHttpClient(withInterceptors([loggingInterceptor]))],
+}).catch((err) => console.error(err));
+
+```
+
+
 
 ## Form
 
