@@ -3095,11 +3095,113 @@ bootstrapApplication(AppComponent, {
 
 参考地址：https://angular.cn/guide/forms/reactive-forms
 
-
-
 驱动表单和响应式表单。
 
-模板驱动表单
+### 模板驱动表单
+
+```ts
+// 给表单添加一个名族#form， 并把表单传递给ts中的方法
+// 模板变量不一定可以是form
+<form #form=ngForm (ngSubmit)="onSubmit(form)">
+  <h2>Login</h2>
+
+  <div class="control-row">
+    <div class="control no-margin">
+      <label for="email">Email</label>
+      <input id="email" type="email" name="email" ngModel />
+    </div>
+
+    <div class="control no-margin">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" ngModel />
+    </div>
+
+    <button class="button">Login</button>
+  </div>
+</form>
+
+// -----------------
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
+  imports: [
+    FormsModule
+  ]
+})
+export class LoginComponent {
+  // 获取表单的内容
+  onSubmit(form: NgForm) {
+    console.log(form);
+  }
+}
+```
+
+### 模板中内置的验证
+
+```ts
+<form #form=ngForm (ngSubmit)="onSubmit(form)">
+  <h2>Login</h2>
+
+  <div class="control-row">
+    <div class="control no-margin">
+      <label for="email">Email</label>
+      <!-- 这里的内置验证器 required email-->
+      <input id="email" type="email" name="email" ngModel required email #email="ngModel" />
+    </div>
+
+    <div class="control no-margin">
+      <label for="password">Password</label>
+      <!-- 这里的内置验证器 required minlength="6"-->
+      <input id="password" type="password" name="password" ngModel required minlength="6" #password="ngModel" />
+    </div>
+
+    <button class="button">Login</button>
+
+  </div>
+  // 这里是响应式的，如果表单中输入的格式非法这里就会立即被渲染
+  @if (email.touched && email.dirty && email.invalid) {
+    <p class="control-error">键入了非法的邮件格式.</p>
+  }
+
+  @if (password.touched && password.dirty && password.invalid) {
+    <p>输入的密码必须大于6位!!!</p>
+  }
+</form>
+
+// ============================
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
+  imports: [
+    FormsModule
+  ]
+})
+export class LoginComponent {
+    // 从html中传过来的form表单
+  onSubmit(formData: NgForm) {
+    console.log(formData);
+
+    if (!formData.form.valid) {
+      console.log('表单不合法.')
+      return
+    }
+
+    const enteredEmail = formData.form.value.email;
+    const enteredPassword = formData.form.value.password;
+
+    console.log(enteredEmail)
+    console.log(enteredPassword);
+
+  }
+}
+
+```
+
+
 
 1.ts中获取form对象
 
