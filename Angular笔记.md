@@ -1405,7 +1405,7 @@ export class AppComponent {
 
 - 组件复用
 
-![](D:\前端\项目\images\ScreenShot_2026-02-08_175154_952.png)
+![](images/ScreenShot_2026-02-08_175154_952.png)
 
 在这里每个卡片的标题部分都是重复的代码，为了让代码更加的简洁，可以把标题部分做成一个公共的组件，然后把内容部分进行填充。
 
@@ -2077,7 +2077,7 @@ export class TicketsComponent {
 
 服务是创建在组件a中的，这样也可以在组件之间数据共享。
 
-![](D:\前端\项目\images\QQ20260321-172835.png)
+![](images/QQ20260321-172835.png)
 
 auth组件
 
@@ -3201,47 +3201,534 @@ export class LoginComponent {
 
 ```
 
-
-
-1.ts中获取form对象
-
-2.在console中打印form对象的 是否被点击 格式校验是否有效 是否被点击
-
-获取  input的value 
-
-验证属性 比如邮件格式、密码长度  
-
-控件 #email='ngModel'
-
-格式校验错误样式显示。
-
-
-
-提交之后重置表单内容
-
-保存表单的输入数据在用户刷新页面的时候  
-
 ### 响应式表单
+
+```ts
+// 使用模板中定义的form
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <h2>Login</h2>
+
+  <div class="control-row">
+    <div class="control no-margin">
+      <label for="email">Email</label>
+       // 引用ts中email的定义
+      <input id="email" type="email" [formControl]="form.controls.email" ]/>
+    </div>
+
+    <div class="control no-margin">
+      <label for="password">Password</label>
+      // 引用ts中password的定义
+      <input id="password" type="password" formControlName="password" />
+    </div>
+
+    <button class="button">Login</button>
+  </div>
+</form>
+
+// ==========================
+
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
+  imports: [
+    ReactiveFormsModule
+  ]
+})
+export class LoginComponent {
+  // 定义表单的字段校验
+  form = new FormGroup({
+    email: new FormControl(''),
+    password: new FormControl('')
+  })
+
+  onSubmit() {
+    console.log(this.form)
+    // 因为表单在类中被定义了这里就可以直接获取到
+    const enteredEmail = this.form.value.email;
+    const enteredPassword =  this.form.value.password;
+    
+    console.log(enteredEmail, enteredPassword)
+  }
+}
+
+```
 
 从控件中获取表单的值
 
-自定义验证器
+```ts
+  @if (emailIsInvalid) {
+    <p class="control-error">Please enter a valid email address.</p>
+  }
 
-使用控件做表单的校验
+  // 模板中直接使用是否合法的变量
+  @if (passwordIsInvalid) {
+    <p class="control-error">Please enter a valid password (at least 6 characters long).</p>
+  }
 
-自定义验证方法
+// ======
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
+  imports: [
+    ReactiveFormsModule
+  ]
+})
+export class LoginComponent {
+  form = new FormGroup({
+    // 定义验证器
+    email: new FormControl('', {validators: [Validators.required, Validators.email]}),
+    password: new FormControl('', {validators: [Validators.required, Validators.minLength(6)]}),
+  })
+
+   // 直接ts中获取表单的系统属性看字段是否有效
+  get emailIsInvalid() {
+    return (
+      this.form.controls.email.touched &&
+      this.form.controls.email.dirty &&
+      this.form.controls.email.invalid
+    );
+  }
+
+  get passwordIsInvalid() {
+    return (
+      this.form.controls.password.touched &&
+      this.form.controls.password.dirty &&
+      this.form.controls.password.invalid
+    );
+  }
+
+  onSubmit() {
+    console.log(this.form)
+    const enteredEmail = this.form.value.email;
+    const enteredPassword =  this.form.value.password;
+
+    console.log(enteredEmail, enteredPassword)
+  }
+}
+
+```
+
+### 自定义验证器
+
+直接定义js的校验函数然后引入validators中
+
+使用控件做表单的校验，自定义验证方法。
+
+```ts
+// 定义
+function mustContainQuestionMark(control: AbstractControl) {
+  if (control.value.includes('?')) {
+      // 验证通过返回null
+    return null;
+  }
+    // 验证失败返回对象
+  return { doesNotContainQuestionMark: true };
+}
+
+export class LoginComponent {
+  form = new FormGroup({
+    email: new FormControl('', {validators: [Validators.required, Validators.email]}),
+      // 引用
+    password: new FormControl('', {validators: [Validators.required, Validators.minLength(6), mustContainQuestionMark]}),
+  })
+    .......
+```
+
+
 
 ### 异步验证
 
+这种异步的方式可以把校验方法写成服务，再加上防抖 + 去重 + 取消旧请求这样就可以直接后端进行验证。
 
+```ts
+function emailIsUnique(control: AbstractControl) {
+  if (control.value !== 'test@example.com') {
+      // 异步的返回必须是一个Observable / Promise， of只是包装成了异步格式。
+    return of(null);
+  }
+
+  return of({ notUnique: true });
+}
+```
+
+使用校验器
+
+```ts
+export class LoginComponent {
+    // asyncValidators:[emailIsUnique] 异步验证的参数和方式
+  form = new FormGroup({
+    email: new FormControl('', {validators: [Validators.required, Validators.email],asyncValidators:[emailIsUnique]}),
+    password: new FormControl('', {validators: [Validators.required, Validators.minLength(6), mustContainQuestionMark]}),
+  })
+    // ..................
+```
 
 使用控件的方式缓存input数据 
 
+```ts
+import {Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
+import {debounceTime, of} from "rxjs";
+
+function mustContainQuestionMark(control: AbstractControl) {
+  if (control.value.includes('?')) {
+    return null;
+  }
+  return { doesNotContainQuestionMark: true };
+}
+
+// 定义初始化的initialEmailValue
+let initialEmailValue = '';
+// 从本地获取key
+const savedForm = window.localStorage.getItem('saved-login-form');
+
+//如果有缓存的key就加载缓存
+if (savedForm) {
+  const loadedForm = JSON.parse(savedForm);
+  initialEmailValue = loadedForm.email;
+}
 
 
-多输入定义校验
+function emailIsUnique(control: AbstractControl) {
+  if (control.value !== 'test@example.com') {
+    return of(null);
+  }
 
-定义密码验证器
+  return of({ notUnique: true });
+}
+
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
+  imports: [
+    ReactiveFormsModule
+  ]
+})
+
+export class LoginComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
+  form = new FormGroup({
+      // 有缓存变量initialEmailValue被定义添加初始值
+    email: new FormControl(initialEmailValue, {validators: [Validators.required, Validators.email],asyncValidators:[emailIsUnique]}),
+    password: new FormControl('', {validators: [Validators.required, Validators.minLength(6), mustContainQuestionMark]}),
+  })
+
+  get emailIsInvalid() {
+    return (
+      this.form.controls.email.touched &&
+      this.form.controls.email.dirty &&
+      this.form.controls.email.invalid
+    );
+  }
+
+  get passwordIsInvalid() {
+    return (
+      this.form.controls.password.touched &&
+      this.form.controls.password.dirty &&
+      this.form.controls.password.invalid
+    );
+  }
+
+  onSubmit() {
+    console.log(this.form)
+    const enteredEmail = this.form.value.email;
+    const enteredPassword =  this.form.value.password;
+    console.log(enteredEmail, enteredPassword)
+  }
+
+  ngOnInit() {
+    // const savedForm = window.localStorage.getItem('saved-login-form');
+
+    // if (savedForm) {
+    //   const loadedForm = JSON.parse(savedForm);
+    //   this.form.patchValue({
+    //     email: loadedForm.email,
+    //   });
+    // }
+
+      // 这里控制缓存和放用户输入的抖动
+    const subscription = this.form.valueChanges
+      .pipe(debounceTime(500))
+      .subscribe({
+        next: (value) => {
+          window.localStorage.setItem(
+            'saved-login-form',
+            JSON.stringify({ email: value.email })
+          );
+        },
+      });
+    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  }
+}
+```
+
+在控件中定义页面的值会更加的高效，因为ts处理数据更加的方便。
+
+
+
+### 多输入定义校验
+
+还是记录了各种表单输入的各种功能。
+
+ [signup.component.html](11.forms\multi-input-form\src\app\auth\signup\signup.component.html) 
+
+```html
+<form [formGroup]="form" (ngSubmit)="onSubmit()">
+  <h2>Welcome on board!</h2>
+  <p>We just need a little bit of data from you to get you started 🚀</p>
+
+  <div class="control">
+    <label for="email">Email</label>
+    <input id="email" type="email" name="email" formControlName="email" />
+  </div>
+
+  <div class="control-row" formGroupName="passwords">
+    <div class="control">
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        formControlName="password"
+      />
+    </div>
+
+    <div class="control">
+      <label for="confirm-password">Confirm Password</label>
+      <input
+        id="confirm-password"
+        type="password"
+        name="confirm-password"
+        formControlName="confirmPassword"
+      />
+    </div>
+  </div>
+
+  <hr />
+
+  <div>
+    <div class="control-row">
+      <div class="control">
+        <label for="first-name">First Name</label>
+        <input
+          type="text"
+          id="first-name"
+          name="first-name"
+          formControlName="firstName"
+        />
+      </div>
+
+      <div class="control">
+        <label for="last-name">Last Name</label>
+        <input
+          type="text"
+          id="last-name"
+          name="last-name"
+          formControlName="lastName"
+        />
+      </div>
+    </div>
+
+    <fieldset formGroupName="address">
+      <legend>Your Address</legend>
+
+      <div class="control-row">
+        <div class="control">
+          <label for="street">Street</label>
+          <input
+            type="text"
+            id="street"
+            name="street"
+            formControlName="street"
+          />
+        </div>
+
+        <div class="control">
+          <label for="number">Number</label>
+          <input
+            type="text"
+            id="number"
+            name="number"
+            formControlName="number"
+          />
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="control">
+          <label for="postal-code">Postal Code</label>
+          <input
+            type="text"
+            id="postal-code"
+            name="postal-code"
+            formControlName="postalCode"
+          />
+        </div>
+
+        <div class="control">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" formControlName="city" />
+        </div>
+      </div>
+    </fieldset>
+  </div>
+
+  <hr />
+
+  <div class="control-row">
+    <div class="control">
+      <label for="role">What best describes your role?</label>
+      <select id="role" name="role" formControlName="role">
+        <option value="student">Student</option>
+        <option value="teacher">Teacher</option>
+        <option value="employee">Employee</option>
+        <option value="founder">Founder</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+
+  <fieldset formArrayName="source">
+    <legend>How did you find us?</legend>
+    <div class="control">
+      <input type="checkbox" id="google" name="acquisition" value="google" formControlName="0" />
+      <label for="google">Google</label>
+    </div>
+
+    <div class="control">
+      <input type="checkbox" id="friend" name="acquisition" value="friend" formControlName="1" />
+      <label for="friend">Referred by friend</label>
+    </div>
+
+    <div class="control">
+      <input type="checkbox" id="other" name="acquisition" value="other" formControlName="2" />
+      <label for="other">Other</label>
+    </div>
+  </fieldset>
+
+  <div class="control-row">
+    <div class="control">
+      <input type="checkbox" id="terms-and-conditions" name="terms" formControlName="agree" />
+      <label for="terms-and-conditions">
+        I agree to the terms and conditions
+      </label>
+    </div>
+  </div>
+
+  <p class="form-actions">
+    <button type="button" class="button button-flat" (click)="onReset()">
+      Reset
+    </button>
+    <button type="submit" class="button">Sign up</button>
+  </p>
+
+  @if (form.touched && form.invalid) {
+    <p class="control-error">
+      Invalid form - please check your input data.
+    </p>
+  }
+</form>
+
+```
+
+ [signup.component.ts](11.forms\multi-input-form\src\app\auth\signup\signup.component.ts) 
+
+```ts
+import { Component } from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+
+// 控件的方法实现
+function equalValues(controlName1: string, controlName2: string) {
+  return (control: AbstractControl) => {
+    const val1 = control.get(controlName1)?.value;
+    const val2 = control.get(controlName2)?.value;
+
+    if (val1 === val2) {
+      return null;
+    }
+
+    return { valuesNotEqual: true };
+  };
+}
+
+@Component({
+  selector: 'app-signup',
+  standalone: true,
+  imports: [ReactiveFormsModule],
+  templateUrl: './signup.component.html',
+  styleUrl: './signup.component.css',
+})
+export class SignupComponent {
+  form = new FormGroup({
+    email: new FormControl('', {
+      validators: [Validators.email, Validators.required],
+    }),
+    passwords: new FormGroup(
+      {
+        password: new FormControl('', {
+          validators: [Validators.required, Validators.minLength(6)],
+        }),
+        confirmPassword: new FormControl('', {
+          validators: [Validators.required, Validators.minLength(6)],
+        }),
+      },
+        // 判断两个控件的值是否相等
+      {
+        validators: [equalValues('password', 'confirmPassword')],
+      }
+    ),
+    firstName: new FormControl('', { validators: [Validators.required] }),
+    lastName: new FormControl('', { validators: [Validators.required] }),
+    address: new FormGroup({
+      street: new FormControl('', { validators: [Validators.required] }),
+      number: new FormControl('', { validators: [Validators.required] }),
+      postalCode: new FormControl('', { validators: [Validators.required] }),
+      city: new FormControl('', { validators: [Validators.required] }),
+    }),
+      // 控制下拉框的默认值
+    role: new FormControl<
+      'student' | 'teacher' | 'employee' | 'founder' | 'other'
+    >('student', { validators: [Validators.required] }),
+      // 控制复选框是否勾选
+    source: new FormArray([
+      new FormControl(false),
+      new FormControl(false),
+      new FormControl(false),
+    ]),
+      // 协议必须勾选，默认为不勾选
+    agree: new FormControl(false, { validators: [Validators.required] }),
+  });
+
+  onSubmit() {
+    if (this.form.invalid) {
+      console.log('INVALID FORM');
+      return;
+    }
+
+    console.log(this.form);
+  }
+
+  onReset() {
+    this.form.reset();
+  }
+}
+```
+
+
 
 
 
