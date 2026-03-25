@@ -3734,7 +3734,36 @@ export class SignupComponent {
 
 ## Routing 
 
-主配置文件中导入。路由配置分离。
+主配置文件中导入路由、配置分离。
+
+```ts
+// main.ts
+import { bootstrapApplication } from '@angular/platform-browser';
+
+import { AppComponent } from './app/app.component';
+import {appConfig} from "./app/app.config";
+
+bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err));
+
+// app/app.config.ts
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+  ],
+}
+	
+
+
+// app/app.routers.ts
+
+```
+
+
 
 注册多路由
 

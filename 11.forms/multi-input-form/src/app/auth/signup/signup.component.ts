@@ -57,7 +57,7 @@ export class SignupComponent {
     role: new FormControl<
       'student' | 'teacher' | 'employee' | 'founder' | 'other'
     >('student', { validators: [Validators.required] }),
-    
+
     source: new FormArray([
       new FormControl(false),
       new FormControl(false),
