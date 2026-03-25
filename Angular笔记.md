@@ -3734,6 +3734,8 @@ export class SignupComponent {
 
 ## Routing 
 
+### 配置路由
+
 主配置文件中导入路由、配置分离。
 
 ```ts
@@ -3758,40 +3760,701 @@ export const appConfig: ApplicationConfig = {
 }
 	
 
-
 // app/app.routers.ts
+import { Routes} from "@angular/router";
+import { TasksComponent } from "./tasks/tasks.component";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+
+export const routes: Routes = [
+  {
+    // 默认路由在直接访问 hostname/ 的时候激活的组件
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "tasks",
+    component: TasksComponent,
+  },
+]
+```
+
+### 404 路由
+
+两个\*表示匹配所有的路由。
+
+```ts
+
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+```
+
+
+
+默认路由的页面内容
+
+![image-20260325102921752](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325102921752.png)
+
+
+
+```html
+
+// app.component.html
+
+<app-header />
+
+<main>
+  <app-users />
+
+  <div>
+      // 引入路由这里只引入了上面tasks的路由
+    <router-outlet />
+  </div>
+</main>
+
+```
+
+http://localhost:4200/tasks
+
+所以在访问页面的时候，访问对应的路径，路由激活展示页面内容。
+
+在用户组件点击的时候跳转路由。
+
+```ts
+<div>
+  <a routerLink="/tasks">
+    <img [src]="imagePath()" [alt]="user().name" />
+    <span>{{ user().name }}</span>
+  </a>
+</div>
+
+// ======
+import { Component, computed, input } from '@angular/core';
+
+import { type User } from './user.model';
+import {RouterLink} from "@angular/router";
+
+@Component({
+  selector: 'app-user',
+  standalone: true,
+  templateUrl: './user.component.html',
+  styleUrl: './user.component.css',
+  imports: [
+      // 需要导入这个包
+    RouterLink
+  ]
+})
+export class UserComponent {
+  user = input.required<User>();
+
+  imagePath = computed(() => 'users/' + this.user().avatar);
+}
 
 ```
 
 
 
-注册多路由
+![image-20260325100653018](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325100653018.png)
 
-routerLink
+### routerLInkActive
 
-routerLInkActive
+routerLinkActive 需要在ts中导入。
 
-动态路由 
+在路由被选中之后会把selected的类给加上。
 
-老版本获取动态路由的方式 
+```ts
+<div>
+  <a routerLink="/tasks" routerLinkActive="selected">
+    <img [src]="imagePath()" [alt]="user().name" />
+    <span>{{ user().name }}</span>
+  </a>
+</div>
 
-嵌套路由  
+```
 
-相对路由
+### 动态路由
 
-子路由获取父路由的动态参数
+```html
+<div>
+   <!-- 使用列表拼接routerLink, 用户id是组件在渲染的时候传入的动态id -->
+  <a [routerLink]="['/users', user().id]" routerLinkActive="selected">
+    <img [src]="imagePath()" [alt]="user().name" />
+    <span>{{ user().name }}</span>
+  </a>
+</div>
+```
 
-ts中设置路由
+主配置文件中的路由引入`<router-outlet />`
 
-未知的路由设置页面 
+ [app.component.html](12.router\routing\src\app\app.component.html) 
 
-路由重定向
+```html
+<app-header />
 
-拆分路由到文件
+<main>
+  <app-users />
+
+  <div>
+    <router-outlet />
+  </div>
+</main>
+```
+
+定义的路由`:userId`表示传入的路由是可变化的。
+
+ [app.routes.ts](12.router\routing\src\app\app.routes.ts)
+
+```ts
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+  },
+]
+```
+
+### 组件从动态路由中获取路径参数
+
+必须先在路由组件中先导入`withComponentInputBinding`.
+
+这里的配置是全局的，导入之后所有的ts中都可以使用这个功能。
+
+```bash
+import { ApplicationConfig } from '@angular/core';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes, withComponentInputBinding()),
+  ],
+}
+```
+
+路由配置
+
+访问http://localhost:4200/users/u4的时候`u4`是用户的id,匹配为`userId`
+
+```ts
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+  },
+]
+```
+
+组件中获取动态参数并返回，新版本语法更加简洁。
+
+```ts
+import {Component, computed, inject, input} from '@angular/core';
+import {UsersService} from "../users.service";
+
+@Component({
+  selector: 'app-user-tasks',
+  standalone: true,
+  templateUrl: './user-tasks.component.html',
+  styleUrl: './user-tasks.component.css',
+})
+export class UserTasksComponent {
+  private usersService = inject(UsersService);
+
+    // userId在这里被检测到
+  userId = input.required<string>()
+
+    // 根据userId获取到用户名
+  userName = computed(
+    () => this.usersService.users.find((u) => u.id === this.userId())?.name)
+}
+```
+
+angular17之前的版本
+
+```ts
+import {Component, computed, DestroyRef, inject, input, OnInit} from '@angular/core';
+import {UsersService} from "../users.service";
+import {ActivatedRoute} from "@angular/router";
+
+@Component({
+  selector: 'app-user-tasks',
+  standalone: true,
+  templateUrl: './user-tasks.component.html',
+  styleUrl: './user-tasks.component.css',
+})
+export class UserTasksComponent implements OnInit {
+  userId = input.required<string>()
+  
+  userName = '';
+  private usersService = inject(UsersService);
+  private activatedRoute = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
+
+  // userName = computed(
+  //   () => this.usersService.users.find((u) => u.id === this.userId())?.name
+  // );
+
+  ngOnInit(): void {
+    console.log(this.activatedRoute);
+    const subscription = this.activatedRoute.paramMap.subscribe({
+      next: (paramMap) => {
+        this.userName =
+          this.usersService.users.find((u) => u.id === paramMap.get('userId'))
+            ?.name || '';
+      },
+    });
+
+    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  }
+}
+```
+
+网页模板中，用变量渲染模板。
+
+```html
+<section id="tasks">
+  <header>
+    <h2>{{ userName() }} Tasks</h2>
+    <menu>
+      <a>Add Task</a>
+    </menu>
+  </header>
+
+  <p>Todo ...</p>
+</section>
+```
+
+![image-20260325135625767](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325135625767.png)
+
+### 嵌套路由  
+
+### 子路由获取父路由的动态参数
+
+```ts
+import { Routes} from "@angular/router";
+import { TasksComponent } from "./tasks/tasks.component";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+import {UserTasksComponent} from "./users/user-tasks/user-tasks.component";
+import {NewTaskComponent} from "./tasks/new-task/new-task.component";
+import {NotFoundComponent} from "./not-found/not-found.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+      // 设置子路由
+    children: [
+      {
+        path: "tasks",
+        component: TasksComponent,
+      },
+      {
+          // 这里是相对路由会拼接成users/u2/tasks这个样子
+        path: "tasks/new",
+        component: NewTaskComponent,
+      }
+    ]
+  },
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+]
+
+```
+
+http://localhost:4200/users/u2/tasks
+
+展示u2的task详情页面。
+
+`TasksComponent`
+
+```html
+<div>
+  <a [routerLink]="['/users',user().id, 'tasks']" routerLinkActive="selected">
+    <img [src]="imagePath()" [alt]="user().name" />
+    <span>{{ user().name }}</span>
+  </a>
+</div>
+```
+
+http://localhost:4200/users/u2/tasks/new
+
+路由匹配到`NewTaskComponent`组件。
+
+```html
+<section id="tasks">
+  <header>
+    <h2>{{ userName }} Tasks</h2>
+    <menu>
+      <a routerLink='tasks/new'>Add Task</a>
+    </menu>
+  </header>
+
+  <router-outlet />
+</section>
+```
+
+router-outlet展示添加的任务的子页面。
+
+![image-20260325143408143](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325143408143.png)
+
+### 路由重定向
+
+访问http://localhost:4200/users/u4/自动跳转到http://localhost:4200/users/u4/tasks
+
+```ts
+import { Routes} from "@angular/router";
+import { TasksComponent } from "./tasks/tasks.component";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+import {UserTasksComponent} from "./users/user-tasks/user-tasks.component";
+import {NewTaskComponent} from "./tasks/new-task/new-task.component";
+import {NotFoundComponent} from "./not-found/not-found.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+    children: [
+        // 配置跳转的路由
+      {
+        path: '',
+        redirectTo: 'tasks',
+          // 空路径跳转必须加full
+        pathMatch: "full",
+      },
+      {
+        path: "tasks",
+        component: TasksComponent,
+      },
+      {
+        path: "tasks/new",
+        component: NewTaskComponent,
+      }
+    ]
+  },
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+]
+
+```
+
+因为如果直接访问http://localhost:4200/users/u4/的时候task的内容部分不会显示任何的内容，所以需要自动跳转下。在访问用户的时候直接展示tasks.
+
+![image-20260325144827375](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325144827375.png)
+
+### 相对路由
+
+跳转到上一级路由。
+
+```html
+<a routerLink="../">Cancel</a>
+```
+
+取消的上一级，把`/new`去掉。
+
+![image-20260325152404674](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325152404674.png)
+
+### ts中设置路由
+
+这里在create之后会从http://localhost:4200/users/u4/tasks/new -> http://localhost:4200/users/u4/tasks
+
+```ts
+@Component({
+  selector: 'app-new-task',
+  standalone: true,
+  imports: [FormsModule, RouterLink],
+  templateUrl: './new-task.component.html',
+  styleUrl: './new-task.component.css',
+})
+export class NewTaskComponent {
+  userId = input.required<string>();
+  enteredTitle = signal('');
+  enteredSummary = signal('');
+  enteredDate = signal('');
+  private tasksService = inject(TasksService);
+    
+    // 注入路由
+  private router = inject(Router);
+
+  onSubmit() {
+    this.tasksService.addTask(
+      {
+        title: this.enteredTitle(),
+        summary: this.enteredSummary(),
+        date: this.enteredDate(),
+      },
+      this.userId()
+    );
+
+    // 在添加用户任务之后返回到用户task详情
+      // replaceUrl: true 表示直接把url替换成这种样式
+    this.router.navigate(['users',this.userId(),'tasks'], {
+      replaceUrl: true
+    })
+
+  }
+}
+
+```
+
+### 拆分路由到文件
+
+ [users.routes.ts](12.router\routing\src\app\users\users.routes.ts) 
+
+```ts
+import {Routes} from "@angular/router";
+import {TasksComponent} from "../tasks/tasks.component";
+import {NewTaskComponent} from "../tasks/new-task/new-task.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'tasks',
+    pathMatch: "full",
+  },
+  {
+    path: "tasks",
+    component: TasksComponent,
+  },
+  {
+    path: "tasks/new",
+    component: NewTaskComponent,
+  }
+]
+```
+
+主路由配置文件
+
+ [app.routes.ts](12.router\routing\src\app\app.routes.ts)
+
+```ts
+import { Routes} from "@angular/router";
+// 给导入的路由添加别名
+import { routes as UserRoutes } from "./users/users.routes";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+import {UserTasksComponent} from "./users/user-tasks/user-tasks.component";
+import {NotFoundComponent} from "./not-found/not-found.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+      // 引用子路由
+    children: UserRoutes
+  },
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+]
+```
 
 路由快照需要注意
 
- 提取查询参数
+###  提取查询参数
+
+http://localhost:4200/users/u3/tasks?order=desc
+
+页面上的倒序或者顺序会根据点击自动生成。
+
+queryParams 提交参数的设定。
+
+routerLink 是当前目录。
+
+```html
+<p>
+  <a routerLink="./" [queryParams]="{order: order() === 'asc' ? 'desc' : 'asc'}">
+    Sort {{ order() === 'asc' ? 'Descending' : 'Ascending' }}
+  </a>
+</p>
+
+<ul>
+  @for (task of userTasks(); track task.id) {
+    <li>
+      <app-task [task]="task" />
+    </li>
+  } @empty {
+    <p>There are no tasks yet. Start adding some!</p>
+  }
+</ul>
+```
+
+```ts
+import {Component, computed, DestroyRef, inject, input, OnInit, signal} from '@angular/core';
+
+import { TaskComponent } from './task/task.component';
+import {TasksService} from "./tasks.service";
+import {ActivatedRoute, RouterLink} from "@angular/router";
+
+@Component({
+  selector: 'app-tasks',
+  standalone: true,
+  templateUrl: './tasks.component.html',
+  styleUrl: './tasks.component.css',
+  imports: [TaskComponent, RouterLink],
+})
+
+export class TasksComponent implements OnInit {
+  userId = input.required<string>();
+  // order = input<'asc' | 'desc'>();
+  order = signal<'asc' | 'desc'>('desc');
+  private tasksService = inject(TasksService);
+    
+    // 这里的userTasks会根据order信号的变化而变化
+  userTasks = computed(() =>
+    this.tasksService
+      .allTasks()
+      .filter((task) => task.userId === this.userId())
+      .sort((a, b) => {
+        if (this.order() === 'desc') {
+          return a.id > b.id ? -1 : 1;
+        } else {
+          return a.id > b.id ? 1 : -1;
+        }
+      })
+  );
+  private activatedRoute = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+    const subscription = this.activatedRoute.queryParams.subscribe({
+        // 获取url的参数
+      next: (params) => this.order.set(params['order']),
+    });
+
+    this.destroyRef.onDestroy(() => subscription.unsubscribe());
+  }
+}
+```
+
+![image-20260325162327646](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325162327646.png)
+
+### 解析动态数据
+
+```ts
+import { Routes} from "@angular/router";
+import { routes as UserRoutes } from "./users/users.routes";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+import {resolveUserName, UserTasksComponent} from "./users/user-tasks/user-tasks.component";
+import {NotFoundComponent} from "./not-found/not-found.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+  },
+  {
+    path: "users/:userId",
+    component: UserTasksComponent,
+    children: UserRoutes,
+      // 这里定义的数据可以直接在模板中访问
+    data: {
+      message: 'Hello!'
+    },
+    resolve: {
+        // 在匹配到路由的时候就执行这个函数把要渲染模板的数据准备好
+      userName: resolveUserName
+    }
+  },
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+]
+```
+
+ [user-tasks.component.ts](12.router\routing\src\app\users\user-tasks\user-tasks.component.ts) 
+
+```ts
+import { Component, inject, input } from '@angular/core';
+import {
+  ActivatedRouteSnapshot,
+  ResolveFn,
+  RouterLink,
+  RouterOutlet,
+  RouterStateSnapshot,
+} from '@angular/router';
+
+import { UsersService } from '../users.service';
+
+@Component({
+  selector: 'app-user-tasks',
+  standalone: true,
+  templateUrl: './user-tasks.component.html',
+  styleUrl: './user-tasks.component.css',
+  imports: [
+    RouterLink,
+    RouterOutlet
+  ]
+})
+export class UserTasksComponent {
+    // 这里的两个变量和路由中定义的匹配
+  userName = input.required<string>();
+  message = input.required<string>();
+}
+
+export const resolveUserName: ResolveFn<string> = (
+  activatedRoute: ActivatedRouteSnapshot,
+  routerState: RouterStateSnapshot
+) => {
+  const usersService = inject(UsersService);
+    // 从路由中获取userId参数然后拿到userService中返回的数据去查询userName
+  const userName =
+    usersService.users.find(
+      (u) => u.id === activatedRoute.paramMap.get('userId')
+    )?.name || '';
+    // 查到之后返回结果
+  return userName;
+};
+```
+
+ [user-tasks.component.html](12.router\routing\src\app\users\user-tasks\user-tasks.component.html) 
+
+模板中直接访问userName和message.
+
+```html
+<section id="tasks">
+  <header>
+    <h2>{{ userName() }} Tasks</h2>
+    <p>{{ message() }}</p>
+    <menu>
+      <a routerLink="tasks/new">Add Task</a>
+    </menu>
+  </header>
+
+  <router-outlet />
+</section>
+```
+
+![image-20260325171227406](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325171227406.png)
+
+
+
+
 
 为路由组件设置data的属性
 
