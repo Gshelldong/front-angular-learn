@@ -3794,7 +3794,7 @@ export const routes: Routes = [
 
 默认路由的页面内容
 
-![image-20260325102921752](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325102921752.png)
+![image-20260325102921752](images/image-20260325102921752.png)
 
 
 
@@ -3855,7 +3855,7 @@ export class UserComponent {
 
 
 
-![image-20260325100653018](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325100653018.png)
+![image-20260325100653018](images/image-20260325100653018.png)
 
 ### routerLInkActive
 
@@ -4033,7 +4033,7 @@ export class UserTasksComponent implements OnInit {
 </section>
 ```
 
-![image-20260325135625767](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325135625767.png)
+![image-20260325135625767](images/image-20260325135625767.png)
 
 ### 嵌套路由  
 
@@ -4110,7 +4110,7 @@ http://localhost:4200/users/u2/tasks/new
 
 router-outlet展示添加的任务的子页面。
 
-![image-20260325143408143](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325143408143.png)
+![image-20260325143408143](images/image-20260325143408143.png)
 
 ### 路由重定向
 
@@ -4160,7 +4160,7 @@ export const routes: Routes = [
 
 因为如果直接访问http://localhost:4200/users/u4/的时候task的内容部分不会显示任何的内容，所以需要自动跳转下。在访问用户的时候直接展示tasks.
 
-![image-20260325144827375](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325144827375.png)
+![image-20260325144827375](images/image-20260325144827375.png)
 
 ### 相对路由
 
@@ -4172,7 +4172,7 @@ export const routes: Routes = [
 
 取消的上一级，把`/new`去掉。
 
-![image-20260325152404674](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325152404674.png)
+![image-20260325152404674](images/image-20260325152404674.png)s
 
 ### ts中设置路由
 
@@ -4351,7 +4351,7 @@ export class TasksComponent implements OnInit {
 }
 ```
 
-![image-20260325162327646](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325162327646.png)
+![image-20260325162327646](images/image-20260325162327646.png)
 
 ### 解析动态数据
 
@@ -4450,9 +4450,11 @@ export const resolveUserName: ResolveFn<string> = (
 </section>
 ```
 
-![image-20260325171227406](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325171227406.png)
+![](images/image-20260325171227406.jpg)
 
 ### 使用activatedRoute获取路由中的data数据
+
+
 
 ```ts
 export class UserTasksComponent implements OnInit {
@@ -4471,7 +4473,7 @@ export class UserTasksComponent implements OnInit {
 }
 ```
 
-![](D:\前端项目\front-angular-learn\images\QQ截图20260409114710.png)
+![](images/QQ截图20260409114710.png)
 
 ### 在路由中准备组件input数据
 
