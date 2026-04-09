@@ -4452,21 +4452,331 @@ export const resolveUserName: ResolveFn<string> = (
 
 ![image-20260325171227406](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260325171227406.png)
 
+### 使用activatedRoute获取路由中的data数据
+
+```ts
+export class UserTasksComponent implements OnInit {
+  userName = input.required<string>();
+  message = input.required<string>();
+
+  // 这里注入活动路由之后就可以订阅路由中的数据
+  private activatedRoute = inject(ActivatedRoute);
+  ngOnInit(): void {
+    this.activatedRoute.data.subscribe({
+      next: data => {
+        console.log(data);
+      }
+    })
+  }
+}
+```
+
+![](D:\前端项目\front-angular-learn\images\QQ截图20260409114710.png)
+
+### 在路由中准备组件input数据
+
+ [users.routes.ts](12.router\routing\src\app\users\users.routes.ts) 
+
+`runGuardsAndResolvers: 'paramsOrQueryParamsChange'`
+
+当路由的路径参数（params）或查询参数（queryParams）发生变化时，强制重新执行守卫（Guard）和解析器（Resolver），并重新创建组件实例（或刷新组件数据）
+
+```ts
+import {Routes} from "@angular/router";
+import {resolveUserTasks, TasksComponent} from "../tasks/tasks.component";
+import {NewTaskComponent} from "../tasks/new-task/new-task.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'tasks',
+    pathMatch: 'full',
+  },
+  {
+    path: "tasks",
+    component: TasksComponent,
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    resolve: {
+        // 这里定义了一个userTasks这个是一个变量，定义了之后再组件和模板中都可以访问
+        // 变量的赋值主要是使用组件中定义的resolveUserTasks函数
+      userTasks: resolveUserTasks,
+    },
+  },
+  {
+    path: "tasks/new",
+    component: NewTaskComponent,
+  }
+]
 
 
+```
+
+ [tasks.component.ts](12.router\routing\src\app\tasks\tasks.component.ts) 
+
+```ts
+@Component({
+  selector: 'app-tasks',
+  standalone: true,
+  templateUrl: './tasks.component.html',
+  styleUrl: './tasks.component.css',
+  imports: [TaskComponent, RouterLink],
+})
+export class TasksComponent {
+  userTasks = input.required<Task[]>();
+    // userId和order在路由中都被定义了
+  userId = input.required<string>();
+  order = input<'asc' | 'desc' | undefined>();
+}
+
+export const resolveUserTasks: ResolveFn<Task[]> = (
+  activatedRouteSnapshot,
+  routerState
+) => {
+  const order = activatedRouteSnapshot.queryParams['order'];
+  const tasksService = inject(TasksService);
+  const tasks = tasksService
+    .allTasks()
+    .filter(
+        // userId是从url中传过来的，路由中定义了 path: "users/:userId"
+      (task) => task.userId === activatedRouteSnapshot.paramMap.get('userId')
+    );
+
+  if (order && order === 'asc') {
+    tasks.sort((a, b) => (a.id > b.id ? 1 : -1));
+  } else {
+    tasks.sort((a, b) => (a.id > b.id ? -1 : 1));
+  }
+
+  return tasks.length ? tasks : [];
+};
+```
+
+### route设置标签页标题
+
+```ts
+import { Routes} from "@angular/router";
+import { routes as UserRoutes } from "./users/users.routes";
+import {NoTaskComponent} from "./tasks/no-task/no-task.component";
+import {resolveTitle, resolveUserName, UserTasksComponent} from "./users/user-tasks/user-tasks.component";
+import {NotFoundComponent} from "./not-found/not-found.component";
+
+export const routes: Routes = [
+  {
+    path: '',
+    component: NoTaskComponent,
+    // redirectTo: '/users/u1',
+    // pathMatch: 'full'
+      // 设置静态写死的标题
+    title: 'No task selected'
+  },
+  {
+    path: 'users/:userId',
+    component: UserTasksComponent,
+    children: UserRoutes,
+    data: {
+      message: 'Hello!'
+    },
+    resolve: {
+      userName: resolveUserName
+    },
+      // 设置动态解析的标题
+    title: resolveTitle
+  },
+  {
+    path: "**",
+    component: NotFoundComponent,
+  }
+]
+```
+
+ [user-tasks.component.ts](12.router\routing\src\app\users\user-tasks\user-tasks.component.ts) 
+
+```ts
+import {Component, inject, input, OnInit} from '@angular/core';
+import {
+  ActivatedRoute,
+  ActivatedRouteSnapshot,
+  ResolveFn,
+  RouterLink,
+  RouterOutlet,
+  RouterStateSnapshot,
+} from '@angular/router';
+
+import { UsersService } from '../users.service';
+
+@Component({
+  selector: 'app-user-tasks',
+  standalone: true,
+  templateUrl: './user-tasks.component.html',
+  styleUrl: './user-tasks.component.css',
+  imports: [
+    RouterLink,
+    RouterOutlet
+  ]
+})
+
+export class UserTasksComponent implements OnInit {
+  userName = input.required<string>();
+  message = input.required<string>();
+
+  private activatedRoute = inject(ActivatedRoute);
+  ngOnInit(): void {
+    this.activatedRoute.data.subscribe({
+      next: data => {
+        console.log(data);
+      }
+    })
+  }
+}
+
+export const resolveUserName: ResolveFn<string> = (
+  activatedRoute: ActivatedRouteSnapshot,
+  routerState: RouterStateSnapshot
+) => {
+  const usersService = inject(UsersService);
+  const userName =
+    usersService.users.find(
+      (u) => u.id === activatedRoute.paramMap.get('userId')
+    )?.name || '';
+  return userName;
+};
+
+export const resolveTitle: ResolveFn<string> = (
+  activatedRoute,
+  routerState
+) => {
+  return resolveUserName(activatedRoute, routerState) + '\'s Tasks'
+}
+```
+
+### 路由守卫
+
+ **路由守卫 = 进入路由前的 “安检”**
+
+作用：
+
+- 能不能进这个页面？
+- 进之前要不要检查权限？
+- 要不要重定向到别的页面？
+- 进之前要不要加载数据（resolve 也算守卫类）
+
+#### 生产示例
+
+```ts
+const isLoggedInGuard: CanMatchFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isLoggedIn()) {
+      // 允许进入路由
+    return true;
+  }
+    // 失败重定向到其它地方
+  return new RedirectCommand(router.parseUrl('/login'));
+};
+```
+
+#### 演示示例
+
+```ts
+import { CanMatchFn, RedirectCommand, Router, Routes } from '@angular/router';
+import { inject } from '@angular/core';
+
+import { routes as userRoutes } from './users/users.routes';
+import { NoTaskComponent } from './tasks/no-task/no-task.component';
+import {
+  UserTasksComponent,
+  resolveTitle,
+  resolveUserName,
+} from './users/user-tasks/user-tasks.component';
+import { NotFoundComponent } from './not-found/not-found.component';
+
+const dummyCanMatch: CanMatchFn = (route, segments) => {
+  const router = inject(Router);
+  const shouldGetAccess = Math.random();
+  console.log("产生的随机数: " + shouldGetAccess)
+  if (shouldGetAccess < 0.5) {
+      // 如果允许访问返回true
+    return true;
+  }
+    // 不允许访问重定向到其它url
+  return new RedirectCommand(router.parseUrl('/unauthorized'));
+};
+
+export const routes: Routes = [
+  {
+    path: '', // <your-domain>/
+    component: NoTaskComponent,
+    // redirectTo: '/users/u1',
+    // pathMatch: 'full'
+    title: 'No task selected',
+  },
+  {
+    path: 'users/:userId', // <your-domain>/users/<uid>
+    component: UserTasksComponent,
+    children: userRoutes,
+      // 要守卫的路由加上这个配置
+    canMatch: [dummyCanMatch],
+    data: {
+      message: 'Hello!',
+    },
+    resolve: {
+      userName: resolveUserName,
+    },
+    title: resolveTitle,
+  },
+  {
+    path: '**',
+    component: NotFoundComponent,
+  },
+];
+
+```
+
+### 离开路由检查
+
+```ts
+import { Routes } from '@angular/router';
+
+import { TasksComponent, resolveUserTasks } from '../tasks/tasks.component';
+import { NewTaskComponent, canLeaveEditPage } from '../tasks/new-task/new-task.component';
+
+export const routes: Routes = [
+  {
+    path: '',
+    redirectTo: 'tasks',
+    pathMatch: 'full',
+  },
+  {
+    path: "tasks",
+    component: TasksComponent,
+    runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+    resolve: {
+      userTasks: resolveUserTasks,
+    },
+  },
+  {
+    path: "tasks/new",
+    component: NewTaskComponent,
+      // 离开路由的时候会触发这个函数执行
+      // 只有函数返回是true的时候才会通过
+      // 多个函数执行的时候是and的关系
+    canDeactivate: [canLeaveEditPage]
+  },
+];
+```
 
 
-为路由组件设置data的属性
+```ts
+export const canLeaveEditPage: CanDeactivateFn<NewTaskComponent> = (component) => {
+  if (component.enteredTitle() || component.enteredDate() || component.enteredSummary()) {
+    return window.confirm('Do you really want to leave? You will lose the entered data.')
+  }
+  return true;
+}
+```
 
-使用reslove获取组件的数据
 
-路由的标题
-
-路由守卫
-
-
-
- 
 
 
 
