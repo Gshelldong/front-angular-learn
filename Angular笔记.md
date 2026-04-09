@@ -4752,6 +4752,9 @@ export const routes: Routes = [
   {
     path: "tasks",
     component: TasksComponent,
+      // 参数修改的时候重新执行解析resolve
+      
+      // always 只要导航到这个路由，不管路径、参数变不变，永远重新执行守卫
     runGuardsAndResolvers: 'paramsOrQueryParamsChange',
     resolve: {
       userTasks: resolveUserTasks,
