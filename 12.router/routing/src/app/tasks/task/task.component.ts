@@ -1,10 +1,10 @@
 import { Component, inject, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { type Task } from './task.model';
 import { CardComponent } from '../../shared/card/card.component';
 import { TasksService } from '../tasks.service';
-import {ActivatedRoute, Router} from "@angular/router";
 
 @Component({
   selector: 'app-task',

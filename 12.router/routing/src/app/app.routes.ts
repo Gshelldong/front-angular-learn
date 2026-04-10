@@ -14,7 +14,7 @@ const dummyCanMatch: CanMatchFn = (route, segments) => {
   const router = inject(Router);
   const shouldGetAccess = Math.random();
   console.log("产生的随机数: " + shouldGetAccess)
-  if (shouldGetAccess < 0.5) {
+  if (shouldGetAccess < 2) {
     return true;
   }
   return new RedirectCommand(router.parseUrl('/unauthorized'));

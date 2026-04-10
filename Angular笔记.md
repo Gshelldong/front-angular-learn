@@ -4781,6 +4781,29 @@ export const canLeaveEditPage: CanDeactivateFn<NewTaskComponent> = (component) =
 }
 ```
 
+在ts中触发数据更新
+
+```ts
+export class TaskComponent {
+  task = input.required<Task>();
+  private tasksService = inject(TasksService);
+  private router = inject(Router);
+  private activatedRoute = inject(ActivatedRoute);
+
+  onComplete() {
+    this.tasksService.removeTask(this.task().id);
+    this.router.navigate(['./'], {
+        // 相对于当前的路径，不然就是/路径
+      relativeTo: this.activatedRoute,
+        // 就算 URL 没变，也给我重新触发组件逻辑，重新加载数据
+      onSameUrlNavigation: 'reload',
+        // 保留当前页面的查询参数
+      queryParamsHandling: 'preserve',
+    });
+  }
+}
+```
+
 
 
 
