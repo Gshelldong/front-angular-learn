@@ -2401,7 +2401,75 @@ export class SafeLinkDirective {
 
 使用间隔函数更新ui或者发送http请求 
 
+```ts
+import {Component, DestroyRef, OnInit, inject, OnDestroy} from '@angular/core';
+import {interval} from "rxjs";
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  templateUrl: './app.component.html'
+})
+export class AppComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+      // 使用rxjs产生一个Observable对象
+      // Observable 对象必须要订阅才能够生效
+      // 这里会依次产生0 1 2 3 4 5 6.......
+    const subscription = interval(1000).subscribe({
+      next: (data) => console.log(data)
+    });
+
+      // 组件销毁，释放Observable对象，防止溢出。
+    this.destroyRef.onDestroy(
+      () => {
+        subscription.unsubscribe();
+      }
+    )
+  }
+}
+
+```
+
+
+
 interval map运算符 订阅
+
+pipe相当一添加一个管道去处理数据。
+
+map在管道中传入一个函数，表示对数据的处理。
+
+```ts
+import {Component, DestroyRef, OnInit, inject, OnDestroy} from '@angular/core';
+import {interval, map} from "rxjs";
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  templateUrl: './app.component.html'
+})
+export class AppComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+    const subscription = interval(1000).pipe(map((data) => data * 2))
+      .subscribe({
+          // 打印0 2 4 6 8 10 .......
+      next: (data) => console.log(data)
+    });
+
+    this.destroyRef.onDestroy(
+      () => {
+        subscription.unsubscribe();
+      }
+    )
+  }
+}
+
+```
+
+
 
 信号和observable-两者的互相转换
 
