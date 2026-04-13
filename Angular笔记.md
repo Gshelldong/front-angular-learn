@@ -186,7 +186,7 @@ export class UserComponent {
 
 ## 信号和信号计算
 
-信号用于存储一个状态。computed用来计算新的值。
+信号用于存储一个状态。computed用来计算新的值针对只读的信号。
 
 `signal`和`computed`
 
@@ -261,6 +261,7 @@ export class ServerStatusComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   constructor() {
+      // 在构造函数中使用
     effect(() => {
       console.log(this.currentStatus());
     });
@@ -299,6 +300,46 @@ effect()的作用
 当 ngOnInit 里的定时器每 5 秒修改 currentStatus 的值时，effect 会被自动触发，控制台会打印出新的状态值
 
 无需手动订阅 / 取消订阅，Angular 会自动管理 `effect` 的生命周期（结合 `DestroyRef` 自动清理）
+
+### update()方法
+
+更新可以读写的信号，把原始的值进行计算。
+
+```ts
+export class App {
+  protected readonly title = signal('test-demo');
+  countNum = signal<number>(0);
+
+  onClick() {
+    this.countNum.update(count => count+=1);
+  };
+
+  reSet() {
+    this.countNum.set(0);
+  }
+}
+```
+
+### set()方法
+
+直接重置信号中的值。
+
+```ts
+export class App {
+  protected readonly title = signal('test-demo');
+  countNum = signal<number>(0);
+
+  onClick() {
+    this.countNum.update(count => count+=1);
+  };
+
+  reSet() {
+    this.countNum.set(0);
+  }
+}
+```
+
+
 
 ## Inputs方法
 
@@ -2466,12 +2507,43 @@ export class AppComponent implements OnInit {
     )
   }
 }
-
 ```
 
 
 
 信号和observable-两者的互相转换
+
+```ts
+export class AppComponent implements OnInit {
+  clickCount = signal(0);
+    // 把信号转换成Observable对象
+  clickCount$ = toObservable(this.clickCount);
+    // 把Observable转换成信号，延迟1s会不停的发送0 1 2 3 4 5......
+  interval$ = interval(1000);
+  intervalSignal = toSignal(this.interval$, { initialValue: 0 });
+
+  private destroyRef = inject(DestroyRef);
+
+  constructor() {
+  }
+
+  ngOnInit(): void {
+      // 用订阅的方式获取值
+    const subscription = this.clickCount$.subscribe({
+      next: (val) => console.log(`Clicked button ${this.clickCount()} times.`)
+    });
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+    });
+  }
+
+  onClick() {
+    this.clickCount.update((prevCount) => prevCount + 1);
+  }
+}
+```
+
+
 
 ## HTTP
 
@@ -3816,16 +3888,18 @@ import {appConfig} from "./app/app.config";
 bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err));
 
 // app/app.config.ts
-import { ApplicationConfig } from '@angular/core';
-import { provideRouter } from '@angular/router';
-
-import { routes } from './app.routes';
-
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideRouter(routes),
+    provideRouter(
+      routes,
+      withComponentInputBinding(),
+      withRouterConfig({
+          // 子路由继承主路由的查询参数
+        paramsInheritanceStrategy: 'always',
+      })
+    ),
   ],
-}
+};
 	
 
 // app/app.routers.ts
@@ -4876,10 +4950,93 @@ export class TaskComponent {
 
 ## 懒加载
 
-- 路由懒加载实现
-- 懒加载服务
-- 延迟视图-官方文档 新的示例项目
--  
+### 1）路由懒加载实现
+
+实现原理就是在路由中导入模块，如果在文件开头导入模块会导致，全局的引用，有时候页面可能不会点击到这条路由上面，但是这个页面的资源依然会加载；如果把导入写入到路由中，则用户在到达这条路由的时候才会触发响应的资源加载。
+
+未使用的模块最好不要在文件开头引用。
+
+```ts
+export const routes: Routes = [
+  {
+    path: '', // <your-domain>/
+    component: NoTaskComponent,
+    // redirectTo: '/users/u1',
+    // pathMatch: 'full'
+    title: 'No task selected',
+  },
+  {
+    path: 'users/:userId', // <your-domain>/users/<uid>
+    component: UserTasksComponent,
+      // 在指定的路由导入模块
+    loadChildren: () => import('./users/users.routes').then((mod)=>(mod.routes)),
+    canMatch: [dummyCanMatch],
+    data: {
+      message: 'Hello!',
+    },
+    resolve: {
+      userName: resolveUserName,
+    },
+    title: resolveTitle,
+  },
+  {
+    path: '**',
+    component: NotFoundComponent,
+  },
+];
+```
+
+
+
+### 2）服务中实现懒加载
+
+服务注入默认是全局的就是`@Injectable({ providedIn: 'root' })`,可以再路由中使用provider字段去声明服务，这样就只有在路由到指定路径的时候这个服务才会被加载。
+
+把所有的子路由封装一层，然后使用providers字段提供服务。
+
+```ts
+import { Routes } from '@angular/router';
+
+import { TasksComponent, resolveUserTasks } from '../tasks/tasks.component';
+import { NewTaskComponent, canLeaveEditPage } from '../tasks/new-task/new-task.component';
+import {TasksService} from "../tasks/tasks.service";
+
+export const routes: Routes = [
+  {
+    path: '',
+    providers: [TasksService],
+    children: [
+      {
+        path: '',
+        redirectTo: 'tasks',
+        pathMatch: 'full',
+      },
+      {
+        path: "tasks",
+        component: TasksComponent,
+        runGuardsAndResolvers: 'always',
+        resolve: {
+          userTasks: resolveUserTasks,
+        },
+      },
+      {
+        path: "tasks/new",
+        component: NewTaskComponent,
+        canDeactivate: [canLeaveEditPage]
+      },
+    ]
+  }
+];
+
+```
+
+
+
+
+
+### 3）延迟视图-官方文档 新的示例项目
+
+
 
 ## 部署
 
